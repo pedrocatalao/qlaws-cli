@@ -5,15 +5,16 @@ It supports automatically getting your credentials from Bitwarden.
 
 ```
 radix@cobra:~(master✗) » aws-login
-┎                     __          _
-┃ ___ __    _________/ /__  ___ _(_)__
-┃/ ⦿ `/ |/|/ (_-<___/ / ⦿ \/ ⦿ `/ / ⦿ \
-┃\_,_/|__,__/___/  /_/\___/\_, /_/_//_/
-┃                          /___/
-┖ Bitwarden enabled ✓
-┖ Accessing Bitwarden ✓
-┖ Your keychain password is now on the clipboard ↯
-┖ And here's a 2fa token for AWS vault: 202449
-┖ Login successful!
+┏╾┈                    __          _
+┃  ___ __    _________/ /__  ___ _(_)__
+┃ / ⦿ `/ |/|/ (_-<___/ / ⦿ \/ ⦿ `/ / ⦿ \
+┃ \_,_/|__,__/___/  /_/\___/\_, /_/_//_/
+┃                           /___/
+┣ Bitwarden enabled ✓
+┣ Accessing Bitwarden ✓
+┣ Your keychain password is now on the clipboard ↯
+┣ And here's a 2fa token for AWS vault: 223412
+┣ Login successful ✓
+┗╾┈
 pedro-catalao-iam@root-iam:~(master✗) »
 ```
