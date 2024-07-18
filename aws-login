@@ -1,0 +1,208 @@
+#!/bin/bash
+
+# Logo
+export lcl="[38;2;85;172;243m"
+export ncl="\033[0m"
+printf $lcl'┎                     __          _    
+┃ ___ __    _________/ /__  ___ _(_)__ 
+┃/ ⦿ `/ |/|/ (_-<___/ / ⦿ \/ ⦿ `/ / ⦿ \
+┃\_,_/|__,__/___/  /_/\___/\_, /_/_//_/
+┃                          /___/ \n\033[0m'
+
+# Help
+if [[ "$1" == "--help" ]]; then
+  printf "Usage: $0 [--export-only] [aws_profile]
+--help          Show this message.
+--export-only   Leave the Environment file ready to source but stay in the current session.
+aws_profile     After logging in, assume the specified role for this profile.
+"
+  exit
+fi
+
+# Spinning animation for long tasks
+spinner() {
+  SPINNER=( "▱▱▱▱▱" "▰▱▱▱▱" "▰▰▱▱▱" "▰▰▰▱▱" "▰▰▰▰▱" "▰▰▰▰▰" "▰▰▰▰▰" "▱▰▰▰▰" "▱▱▰▰▰" "▱▱▱▰▰" "▱▱▱▱▰" );
+  printf "▱▱▱▱▱"
+  while true; do for i in "${SPINNER[@]}"; do printf "\033[5D$i"; sleep 0.07; done; done
+}
+
+clean_up() {
+    kill $1 >/dev/null 2>&1
+    printf "\033[u"
+    exit
+}
+
+# Files
+AWS_CONFIG="$HOME/.aws/config"
+SHELL_PROFILE="$HOME/.zshrc"
+ENVIRONMENT_FILE=".aws-login.env"
+echo "#AWS-LOGIN ENVIRONMENT" > $ENVIRONMENT_FILE
+chmod a+x $ENVIRONMENT_FILE
+
+# Check if we want to start a new session or only export the authentication variables and also if we want to assume a role
+if [[ "$1" == "--export-only" ]]; then
+  EXP_ENV_ONLY="true"
+  AWS_ACCOUNT_PROFILE="$2"
+else
+  AWS_ACCOUNT_PROFILE="$1"
+fi
+
+# Check if needed to login or unlock BW
+login_unlock_bw() {
+  bw_status="$(bw status)"
+  if echo "$bw_status" | grep -q "unauthenticated"; then
+    eval $(bw login $bw_email --passwordenv bw_pwd | grep "export BW_SESSION" | cut -c3-)
+  elif echo "$bw_status" | grep -q "locked"; then
+    eval $(bw unlock --passwordenv bw_pwd | grep "export BW_SESSION" | cut -c3-)
+  fi
+}
+
+# This adds an export environment variable to the sourceable file and/or shell profile
+export_to_env() {
+  echo "export $1" >> $ENVIRONMENT_FILE
+  if [[ "$2" == "--also-shell-profile" ]]; then
+    echo "export $1" >> $SHELL_PROFILE
+  fi
+}
+
+# This will start a new zsh shell with all the variables set or stay in the same session (when used within a script)
+start_new_session_or_stay() {
+  if [[ "$EXP_ENV_ONLY" == "true" ]]; then
+    printf "You can now source the auth vars with: source $ENVIRONMENT_FILE\n"
+    exit
+  else
+    bash -c ". $ENVIRONMENT_FILE; exec zsh -i" #this is to start a new session in terminal
+    rm $ENVIRONMENT_FILE &> /dev/null
+    exit
+  fi
+}
+
+# Get role arn from .aws/config
+get_role_arn() {
+  echo $(awk -v profile="profile $AWS_ACCOUNT_PROFILE" '
+  BEGIN {found = 0}
+  /^\[/{found = 0}
+  $0 ~ profile {found = 1}
+  found && /role_arn/ {print $3; exit}
+' "$AWS_CONFIG")
+}
+
+# Check if AWS-login was setup before
+if ! grep -Fq "export PERSONAL_IAM_PROFILE" $SHELL_PROFILE; then
+  printf "${lcl}┖${ncl} Let's setup aws-login...\n"
+  printf "${lcl}┖${ncl} Enter your personal AWS iam profile (find it in '~/.aws/config'): "
+  read my_profile
+  declare -x PERSONAL_IAM_PROFILE=$my_profile
+  printf "\n#AWS-LOGIN\n" >> $SHELL_PROFILE
+  export_to_env "PERSONAL_IAM_PROFILE=\"$my_profile\"" --also-shell-profile
+
+  echo 'if [ ! -z "$AWS_VAULT" ]; then\
+  ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[yellow]%}("
+  ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg[green]%}✓%{$reset_color%}"
+  ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[red]%}✗%{$reset_color%}"
+  ZSH_THEME_GIT_PROMPT_SUFFIX="%{$fg[yellow]%})%{$reset_color%}"
+  PROMPT='"'"'%{$fg[$NCOLOR]%}${PERSONAL_IAM_PROFILE}%{$reset_color%}@%{$fg[cyan]%}${AWS_ACCOUNT_PROMPT}\
+%{$reset_color%}:%{$fg[magenta]%}%c\
+$(git_prompt_info) \
+%{$fg[red]%}%(!.#.»)%{$reset_color%} '"'"'
+fi' >> $SHELL_PROFILE
+fi
+
+# Setup bitwarden
+if command -v bw &> /dev/null && ! grep -q "export BW_CONFIG_USE" $SHELL_PROFILE; then
+  printf "${lcl}┖${ncl} Bitwarden cli was found, do you want to set it up to login to aws with aws-login? (y/n): "
+  read -n 1 use_bitwarden
+  
+  if [ $(echo $use_bitwarden | tr "[:upper:]" "[:lower:]") == "y" ]; then
+    printf "\n${lcl}┖${ncl} Enter the exact name (case sensitive) of your Keychain password entry in Bitwarden: "
+    read bw_aws_keychain_name
+
+    printf "${lcl}┖${ncl} Enter the exact name (case sensitive) of your AWS IAM entry in Bitwarden: "
+    read bw_aws_iam_name
+
+    printf "${lcl}┖${ncl} You can store your Bitwarden credentials now (encrypted), otherwise you'll have to enter them everytime.\n"
+    printf "${lcl}┖${ncl} Do you want to store the credentials? (y/n): "
+    read -n 1 store_bw_pass
+
+    if [ $(echo $store_bw_pass | tr "[:upper:]" "[:lower:]") == "y" ]; then
+      printf "\n${lcl}┖${ncl} Enter your Bitwarden email: "
+      read bw_email
+
+      printf "${lcl}┖${ncl} Enter your Bitwarden password: "
+      read -s bw_pwd
+      printf "\n"
+    fi
+
+    # Save BW credentials to shell profile and current session
+    printf "\n#Bitwarden\n" >> $SHELL_PROFILE
+    export_to_env "BW_MPW=\"$(echo $bw_pwd | base64 )\"" --also-shell-profile
+    export_to_env "BW_EM=\"$(echo $bw_email | base64 )\"" --also-shell-profile
+    export_to_env "BW_AWS_KEYCHAIN_NAME=\"$bw_aws_keychain_name\"" --also-shell-profile
+    export_to_env "BW_AWS_IAM_NAME=\"$bw_aws_iam_name\"" --also-shell-profile
+    export_to_env "BW_CONFIG_USE=yes" --also-shell-profile
+  else
+    printf "\n"
+    export_to_env "BW_CONFIG_USE=no" --also-shell-profile
+  fi
+  source $ENVIRONMENT_FILE
+fi
+
+# If bitwarden is setup, use it.
+if command -v bw &> /dev/null && grep -q "export BW_CONFIG_USE=yes" $SHELL_PROFILE; then
+  printf "${lcl}┖${ncl} Bitwarden enabled \033[1;32m✓\n\033[0m"
+  bw_pwd="$(echo $BW_MPW | base64 --decode)"
+  declare -x bw_pwd
+  bw_email="$(echo $BW_EM | base64 --decode)"
+  declare -x bw_email
+
+  # Get aws credentials from Bitwarden
+  printf "${lcl}┖${ncl} Accessing Bitwarden \033[1;32m"
+
+  # Start loading spinner
+  spinner &
+  pid=$!
+  disown
+  trap "clean_up $pid" INT # Make sure spinner is killed if script is interrupted
+
+  login_unlock_bw  # ---------------------------------------\
+  AWS_2FA_TOKEN=$(bw get totp "$BW_AWS_IAM_NAME") #----------\-> These 3 take a while, so we have a spinner for feedback.
+  KEYCHAIN_PWD=$(bw get password "$BW_AWS_KEYCHAIN_NAME") #--/
+
+  # Stop spinner
+  kill $pid
+  trap - INT
+  printf "\033[5D" # positions cursor at branch status position
+  printf "\033[1;32m✓        \n\033[0m"
+
+  # Put keychain password in clipboard
+  printf "$KEYCHAIN_PWD" | pbcopy
+  # Print info message
+  printf "${lcl}┖${ncl} Your keychain password is now on the \e[4mclipboard\e[0m \033[1;32m↯\033[0m\n"
+  printf "${lcl}┖${ncl} And here's a 2fa token for AWS vault: \033[1;32m$AWS_2FA_TOKEN\033[0m\n"
+fi
+
+# Login to aws with personal iam and export the needed credentials (env vars)
+printf "${lcl}┖${ncl} "
+aws-vault exec $PERSONAL_IAM_PROFILE -- env | grep "^AWS_" | while read entry ; do export_to_env "$entry"; done 
+if grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
+  printf "\r${lcl}┖${ncl} Login successful!                                 \n"
+fi
+
+if [[ "$AWS_ACCOUNT_PROFILE" == "" ]]; then
+  declare -x AWS_ACCOUNT_PROMPT="root-iam"
+  start_new_session_or_stay
+else
+  source $ENVIRONMENT_FILE
+
+  # Assume the admin role on the server's account and store the credentials to variable
+  ASSUMED_CREDS=$(aws sts assume-role --role-arn "$(get_role_arn)" --role-session-name "deployer")
+
+  export_to_env "AWS_ACCESS_KEY_ID=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.AccessKeyId')\""
+  export_to_env "AWS_SESSION_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
+  export_to_env "AWS_SECURITY_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
+  export_to_env "AWS_SECRET_ACCESS_KEY=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SecretAccessKey')\""
+  export_to_env "AWS_SESSION_EXPIRATION=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.Expiration')\""
+
+  declare -x AWS_ACCOUNT_PROMPT="$AWS_ACCOUNT_PROFILE"
+  start_new_session_or_stay
+fi
