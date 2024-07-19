@@ -34,9 +34,10 @@ clean_up() {
 
 # Files
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+mkdir -p "$SCRIPT_DIR"
 AWS_CONFIG="$HOME/.aws/config"
 SHELL_PROFILE="$HOME/.zshrc"
-ENVIRONMENT_FILE=".aws-login.env"
+ENVIRONMENT_FILE="$SCRIPT_DIR/.aws-login.env"
 echo "#AWS-LOGIN ENVIRONMENT" > $ENVIRONMENT_FILE
 chmod a+x $ENVIRONMENT_FILE
 
@@ -191,7 +192,7 @@ fi
 
 # Login to aws with personal iam and export the needed credentials (env vars)
 printf "${lcl}┣${ncl} "
-aws-vault exec $PERSONAL_IAM_PROFILE -- env | grep "^AWS_" | while read entry ; do export_to_env "$entry"; done 
+aws-vault exec $PERSONAL_IAM_PROFILE -- env | grep "^AWS_" | while read line ; do export_to_env "$line"; done 
 if grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
   printf "\r${lcl}┣${ncl} Login successful \033[1;32m✓\033[0m                                 \n"
   printf "\r${lcl}┗╾┈${ncl}\n"
