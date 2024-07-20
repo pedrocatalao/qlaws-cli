@@ -5,19 +5,20 @@ It supports automatically getting your credentials from Bitwarden.
 
 When you use it just to authenticate in the terminal, it doesn't add much to the existing `aws-vault` except for the Bitwarden integration:
 ```
-radix@cobra:~(master✗) » aws-login
-┏╾┈                    __          _
-┃  ___ __    _________/ /__  ___ _(_)__
-┃ / ⦿ `/ |/|/ (_-<___/ / ⦿ \/ ⦿ `/ / ⦿ \
-┃ \_,_/|__,__/___/  /_/\___/\_, /_/_//_/
-┃                           /___/
+radix@cobra:~ » aws-login myproject-aws-profile
+┏╾┈
+┃  ⎽⎽⎽ ⎽⎽    ⎽⎽⎽⎽⎽⎽⎽⎽⎽/‾/⎽⎽  ⎽⎽⎽ ⎽(‾)⎽⎽
+┃ / ⦿ `/ |/|/ (_-<⎽⎽⎽/ / ⦿ \/ ⦿ `/ / ⦿ \
+┃ \⎽,⎽/|⎽⎽,⎽⎽/⎽⎽⎽/  /⎽/\⎽⎽⎽/\⎽, /⎽/⎽//⎽/
+┃                           /⎽⎽⎽/
 ┣ Bitwarden enabled ✓
 ┣ Accessing Bitwarden ✓
 ┣ Your keychain password is now on the clipboard ↯
-┣ And here's a 2fa token for AWS vault: 223412
+┣ And here's a 2fa token for AWS vault: 228392
+┣ Enter token for arn:aws:iam::692577250510:mfa/pedro.catalao: 228392
 ┣ Login successful ✓
 ┗╾┈
-pedro-catalao-iam@root-iam:~(master✗) »
+mypersonal-profile-iam@myproject-aws-profile:~ »
 ```
 
 But when you use it within a script, you can do something like this:
