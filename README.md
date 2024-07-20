@@ -4,7 +4,7 @@ Bash script that allows to login to an AWS account and assume roles while stayin
 It supports automatically getting your credentials from Bitwarden.
 
 When you use it just to authenticate in the terminal, it doesn't add much to the existing `aws-vault` except for the Bitwarden integration:
-```bash
+```
 radix@cobra:~(master✗) » aws-login
 ┏╾┈                    __          _
 ┃  ___ __    _________/ /__  ___ _(_)__
