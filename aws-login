@@ -1,13 +1,22 @@
 #!/bin/bash
 
+# Colors
+lcl="[38;2;85;172;243m" # Blue
+ncl="\033[0m" # No color
+
+# Gfx side lines
+sls="${lcl}┏╾┈" # Side line start
+slm="${lcl}┃" # Side line mid
+sle="${lcl}┗╾┈${ncl} " # Side line end
+
+# More
+bul="${lcl} ▬${ncl} "
+
 # Logo
-export lcl="[38;2;85;172;243m"
-export ncl="\033[0m"
-printf $lcl'┏╾┈
-┃  ⎽⎽⎽ ⎽⎽    ⎽⎽⎽⎽⎽⎽⎽⎽⎽/‾/⎽⎽  ⎽⎽⎽ ⎽(‾)⎽⎽
-┃ / ⦿ `/ |/|/ (_-<⎽⎽⎽/ / ⦿ \/ ⦿ `/ / ⦿ \
-┃ \⎽,⎽/|⎽⎽,⎽⎽/⎽⎽⎽/  /⎽/\⎽⎽⎽/\⎽, /⎽/⎽//⎽/
-┃                           /⎽⎽⎽/ \n\033[0m'
+printf "$sls
+$slm \033[35;96;9m█▀▀█ █   █ █▀▀    █   █▀▀█ █▀▀▀  ●  █▀▀▄\033[0m
+$slm █▄▄█ █▄█▄█ ▀▀█ ▀▀ █   █  █ █ ▀█ ▀█▀ █  █\033[0m
+$slm ▀  ▀  ▀ ▀  ▀▀▀    ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀ ▀  ▀\n\033[0m"
 
 # Help
 if [[ "$1" == "--help" ]]; then
@@ -33,7 +42,6 @@ clean_up() {
 
 # Files
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-mkdir -p "$SCRIPT_DIR"
 AWS_CONFIG="$HOME/.aws/config"
 SHELL_PROFILE="$HOME/.zshrc"
 ENVIRONMENT_FILE="$SCRIPT_DIR/.aws-login.env"
@@ -88,10 +96,10 @@ get_role_arn() {
 ' "$AWS_CONFIG")
 }
 
-# Check if AWS-login was setup before
+# Setup aws-cli if first run
 if ! grep -Fq "export PERSONAL_IAM_PROFILE" $SHELL_PROFILE; then
-  printf "${lcl}┣${ncl} Let's setup aws-login...\n"
-  printf "${lcl}┣${ncl} Enter your personal AWS iam profile (find it in '~/.aws/config'): "
+  printf "${slm}${bul}Let's setup aws-login...\n"
+  printf "${slm}${bul}Enter your personal AWS iam profile (find it in '~/.aws/config'): "
   read my_profile
   declare -x PERSONAL_IAM_PROFILE=$my_profile
   printf "\n#AWS-LOGIN\n" >> $SHELL_PROFILE
@@ -108,34 +116,47 @@ if ! grep -Fq "export PERSONAL_IAM_PROFILE" $SHELL_PROFILE; then
 %{$reset_color%}:%{$fg[magenta]%}%c\
 $(git_prompt_info) \
 %{$fg[red]%}%(!.#.»)%{$reset_color%} '"'"'
-fi' >> $SHELL_PROFILE
-  printf "${lcl}┣${ncl} Settings are stored but not loaded, when this session finishes, you need to start a new shell session \033[1;33m⚠\n\033[0m"
-elif [ -z "$PERSONAL_IAM_PROFILE" ];then
-  printf "${lcl}┣${ncl} Settings are stored but not loaded, you need to start a new shell session \033[1;33m⚠\n\033[0m"
+fi
+
+# EC2 id translator - this will look for the settings file for the specified server, i.e. my.server.com and then return the ec2 id, i.e. i-1234567890
+# You should write this method according to your server provisioning structure
+ec2-translate() {
+  host_file=$(find "$HOME/my-project/server-provisioning/" -type f -exec grep -l -w " $1" {} +)
+  echo $(cat $host_file | grep "ansible_host:" | awk -F": " '"'"'{print $2}'"'"') 
+}
+# EC2 connect
+ec2-connect() {
+  ssh -o ProxyCommand="sh -c '"'"'aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p'"'"'" deployer@$(ec2-translate "$1")
+}' >> $SHELL_PROFILE
+fi
+
+if declare -F "ec2-connect" > /dev/null; then
+  printf "${slm}${bul}\033[1;33mAuxiliary methods (ec2-connect) are not loaded, you need to start a new session\n\033[0m"
+  printf "\r${sle}\n"
   exit
 fi
 
 # Setup bitwarden
 if command -v bw &> /dev/null && ! grep -q "export BW_CONFIG_USE" $SHELL_PROFILE; then
-  printf "${lcl}┣${ncl} Bitwarden cli was found, do you want to set it up to login to aws with aws-login? (y/n): "
+  printf "${slm}${bul}Bitwarden cli was found, do you want to set it up to login to aws with aws-login? (y/n): "
   read -n 1 use_bitwarden
   
   if [ $(echo $use_bitwarden | tr "[:upper:]" "[:lower:]") == "y" ]; then
-    printf "\n${lcl}┣${ncl} Enter the exact name (case sensitive) of your Keychain password entry in Bitwarden: "
+    printf "\n${slm}${bul}Enter the exact name (case sensitive) of your Keychain password entry in Bitwarden: "
     read bw_aws_keychain_name
 
-    printf "${lcl}┣${ncl} Enter the exact name (case sensitive) of your AWS IAM entry in Bitwarden: "
+    printf "${slm}${bul}Enter the exact name (case sensitive) of your AWS IAM entry in Bitwarden: "
     read bw_aws_iam_name
 
-    printf "${lcl}┣${ncl} You can store your Bitwarden credentials now (encrypted), otherwise you'll have to enter them everytime.\n"
-    printf "${lcl}┣${ncl} Do you want to store the credentials? (y/n): "
+    printf "${slm}${bul}You can store your Bitwarden credentials now (encrypted), otherwise you'll have to enter them everytime.\n"
+    printf "${slm}${bul}Do you want to store the credentials? (y/n): "
     read -n 1 store_bw_pass
 
     if [ $(echo $store_bw_pass | tr "[:upper:]" "[:lower:]") == "y" ]; then
-      printf "\n${lcl}┣${ncl} Enter your Bitwarden email: "
+      printf "\n${slm}${bul}Enter your Bitwarden email: "
       read bw_email
 
-      printf "${lcl}┣${ncl} Enter your Bitwarden password: "
+      printf "${slm}${bul}Enter your Bitwarden password: "
       read -s bw_pwd
     fi
 
@@ -157,14 +178,14 @@ fi
 
 # If bitwarden is setup, use it.
 if command -v bw &> /dev/null && grep -q "export BW_CONFIG_USE=yes" $SHELL_PROFILE; then
-  printf "${lcl}┣${ncl} Bitwarden enabled \033[1;32m✓\n\033[0m"
+  printf "${slm}${bul}Bitwarden enabled \033[1;32m✓\n\033[0m"
   bw_pwd="$(echo $BW_MPW | base64 --decode)"
   declare -x bw_pwd
   bw_email="$(echo $BW_EM | base64 --decode)"
   declare -x bw_email
 
   # Get aws credentials from Bitwarden
-  printf "${lcl}┣${ncl} Accessing Bitwarden ∙∙∙\033[1;32m"
+  printf "${slm}${bul}Accessing Bitwarden ∙∙∙\033[1;32m"
 
   # Start loading spinner
   spinner &
@@ -185,16 +206,16 @@ if command -v bw &> /dev/null && grep -q "export BW_CONFIG_USE=yes" $SHELL_PROFI
   # Put keychain password in clipboard
   printf "$KEYCHAIN_PWD" | pbcopy
   # Print info message
-  printf "${lcl}┣${ncl} Your keychain password is now on the \e[4mclipboard\e[0m \033[1;32m↯\033[0m\n"
-  printf "${lcl}┣${ncl} And here's a 2fa token for AWS vault: \033[1;32m$AWS_2FA_TOKEN\033[0m\n"
+  printf "${slm}${bul}Your keychain password is now on the \e[4mclipboard\e[0m \033[1;32m↯\033[0m\n"
+  printf "${slm}${bul}And here's a 2fa token for AWS vault: \033[1;32m$AWS_2FA_TOKEN\033[0m\n"
 fi
 
 # Login to aws with personal iam and export the needed credentials (env vars)
-printf "${lcl}┣${ncl} "
+printf "${slm}${bul}"
 aws-vault exec $PERSONAL_IAM_PROFILE -- env | grep "^AWS_" | while read line ; do export_to_env "$line"; done 
 if grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
-  printf "\r${lcl}┣${ncl} Login successful \033[1;32m✓\033[0m                                 \n"
-  printf "\r${lcl}┗╾┈${ncl}\n"
+  printf "\r${slm}${bul}Login successful \033[1;32m✓\033[0m                                 \n"
+  printf "\r${sle}\n"
 fi
 
 if [[ "$AWS_ACCOUNT_PROFILE" == "" ]]; then
