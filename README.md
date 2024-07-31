@@ -7,16 +7,15 @@ When you use it just to authenticate in the terminal, it doesn't add much to the
 ```
 radix@cobra:~ » aws-login myproject-aws-profile
 ┏╾┈
-┃  ⎽⎽⎽ ⎽⎽    ⎽⎽⎽⎽⎽⎽⎽⎽⎽/‾/⎽⎽  ⎽⎽⎽ ⎽(‾)⎽⎽
-┃ / ⦿ `/ |/|/ (_-<⎽⎽⎽/ / ⦿ \/ ⦿ `/ / ⦿ \
-┃ \⎽,⎽/|⎽⎽,⎽⎽/⎽⎽⎽/  /⎽/\⎽⎽⎽/\⎽, /⎽/⎽//⎽/
-┃                           /⎽⎽⎽/
-┣ Bitwarden enabled ✓
-┣ Accessing Bitwarden ✓
-┣ Your keychain password is now on the clipboard ↯
-┣ And here's a 2fa token for AWS vault: 228392
-┣ Enter token for arn:aws:iam::692577250510:mfa/pedro.catalao: 228392
-┣ Login successful ✓
+┃ █▀▀█ █   █ █▀▀    █   █▀▀█ █▀▀▀  ●  █▀▀▄
+┃ █▄▄█ █▄█▄█ ▀▀█ ▀▀ █   █  █ █ ▀█ ▀█▀ █  █
+┃ ▀  ▀  ▀ ▀  ▀▀▀    ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀ ▀  ▀
+┃ ▬ Bitwarden enabled ✓
+┃ ▬ Accessing Bitwarden ✓
+┃ ▬ Your keychain password is now on the clipboard ↯
+┃ ▬ And here's a 2fa token for AWS vault: 123456
+┃ ▬ Enter token for arn:aws:iam::123456789:mfa/pedro.catalao: 123456
+┃ ▬ Login successful ✓
 ┗╾┈
 mypersonal-profile-iam@myproject-aws-profile:~ »
 ```
