@@ -1,26 +1,55 @@
 #!/bin/bash
 
+SCRIPTNAME=$(basename "$0")
+
 # Colors
 lcl="[38;2;85;172;243m" # Blue
+gcl="\033[1;32m" # Green
+rcl="\033[1;31m" # Red
 ncl="\033[0m" # No color
 
-# Gfx side lines
+# Gfx side lines and stuff
 sls="${lcl}┏╾┈" # Side line start
-slm="${lcl}┃" # Side line mid
+slm="${lcl}┃ " # Side line mid
 sle="${lcl}┗╾┈${ncl} " # Side line end
+spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
+spc="${gcl}${spinner[0]}" # Spinner characters
+rws="\033[${#spinner[0]}D" # Rewind spinner
 
 # More
-bul="${lcl} ▬${ncl} "
+bul="${lcl}▬${ncl} " # Bullet
+gcm="${gcl}⛊$ncl" # Green checkmark
+
+# Deshuffle effect
+fake_deshuffle() {
+  rnd_list="ᵡᵉᶜᵅʷ³ᶦᵝ⁾⁸ᶳʲ¹ᵍʲᵟⁿᵠᵘ⁷ᶿʸᵈᵏ⁵ᶠᵐˢ⁶ʳ⁻ᵠᶧⁱʳ⁽ᵖ⁴⁹ᵐᶻᵋᶢᵍᶩᶜᵆ²⁰ᵒˣˡᵞᵛᵄᵇᶹᵗᵗ⁺ʰᵃⁿᶠ"
+  word="$1"
+  word_len="${#word}"
+  for ((k=0; k<$word_len; k++)); do
+    len_left=$((word_len-k))
+    for ((i=0; i<4; i++)); do
+      for ((j=0; j<$len_left; j++)); do
+        printf "${ncl}${rnd_list:$(( RANDOM % ${#rnd_list} )):1}"
+      done
+      sleep 0.03
+      printf "\033[${len_left}D"
+    done
+    printf "${word:$k:1}"
+  done
+}
 
 # Logo
 printf "$sls
-$slm \033[35;96;9m█▀▀█ █   █ █▀▀    █   █▀▀█ █▀▀▀  ●  █▀▀▄\033[0m
-$slm █▄▄█ █▄█▄█ ▀▀█ ▀▀ █   █  █ █ ▀█ ▀█▀ █  █\033[0m
-$slm ▀  ▀  ▀ ▀  ▀▀▀    ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀ ▀  ▀\n\033[0m"
+${slm}\033[35;96;9m█▀▀█ █   █ █▀▀    █   █▀▀█ █▀▀▀  ●  █▀▀▄\033[0m
+${slm}█▄▄█ █▄█▄█ ▀▀█ ▀▀ █   █  █ █ ▀█ ▀█▀ █  █\033[0m
+${slm}▀  ▀  ▀ ▀  ▀▀▀    ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀ ▀  ▀ ${bcl}"
+
+fake_deshuffle ᵛᵉʳℨ.⩇
+printf "\n"
 
 # Help
 if [[ "$1" == "--help" ]]; then
-  printf "Usage: $0 [--export-only] [aws_profile]
+  printf "Usage: $SCRIPTNAME [--export-only] [aws_profile]
 --help          Show this message.
 --export-only   Leave the Environment file ready to source but stay in the current session.
 aws_profile     After logging in, assume the specified role for this profile.
@@ -28,23 +57,43 @@ aws_profile     After logging in, assume the specified role for this profile.
   exit
 fi
 
+start_spinner() {
+  #stty -echo # Disable keyboard
+  trap "clean_up" INT # Make sure spinner is killed if script is interrupted
+  spinner_process &
+  spinner_pid=$!
+  disown
+}
+
+stop_spinner() {
+  kill $spinner_pid
+  trap - INT
+  printf "${rws}" # rewinds cursor position
+  printf "$gcm        \n"
+  #stty echo # Reenable keyboard
+}
+
 # Spinning animation for long tasks
-spinner() {
-  SPINNER=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
-  while true; do for i in "${SPINNER[@]}"; do printf "\033[3D$i"; sleep 0.07; done; done
+spinner_process() {
+  if [[ "$1" == "" ]]; then
+    while true; do for i in "${spinner[@]}"; do printf "${rws}$i"; sleep 0.05; done; done
+  else
+    for i in "${spinner[@]}"; do printf "${rws}$i"; sleep 0.05; done
+  fi
 }
 
 # Spinner clean up
 clean_up() {
-    kill $1 >/dev/null 2>&1
-    exit
+  kill $spinner_pid >/dev/null 2>&1
+  stty echo
+  exit
 }
 
 # Files
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AWS_CONFIG="$HOME/.aws/config"
 SHELL_PROFILE="$HOME/.zshrc"
-ENVIRONMENT_FILE="$SCRIPT_DIR/.aws-login.env"
+ENVIRONMENT_FILE="$HOME/.aws-login.env"
 echo "#AWS-LOGIN ENVIRONMENT" > $ENVIRONMENT_FILE
 chmod a+x $ENVIRONMENT_FILE
 
@@ -58,12 +107,30 @@ fi
 
 # Check if needed to login or unlock BW
 login_unlock_bw() {
+  printf "${slm}${bul}Checking status $spc"
+  start_spinner
   bw_status="$(bw status)"
+  stop_spinner
   if echo "$bw_status" | grep -q "unauthenticated"; then
+    printf "${slm}${bul}Logging in $spc"
+    start_spinner
     eval $(bw login $bw_email --passwordenv bw_pwd | grep "export BW_SESSION" | cut -c3-)
+    stop_spinner
   elif echo "$bw_status" | grep -q "locked"; then
+    printf "${slm}${bul}Unlocking $spc"
+    start_spinner
     eval $(bw unlock --passwordenv bw_pwd | grep "export BW_SESSION" | cut -c3-)
+    stop_spinner
   fi
+}
+
+# Getting credentials
+get_creds_from_bw() {
+  printf "${slm}${bul}Getting credentials $spc"
+  start_spinner
+  AWS_2FA_TOKEN=$(bw get totp "$BW_AWS_IAM_NAME") #----------\-> These 2 take a while, so we have a spinner for feedback.
+  KEYCHAIN_PWD=$(bw get password "$BW_AWS_KEYCHAIN_NAME") #--/
+  stop_spinner
 }
 
 # This adds an export environment variable to the sourceable file and/or shell profile
@@ -77,9 +144,16 @@ export_to_env() {
 # This will start a new zsh shell with all the variables set or stay in the same session (when used within a script)
 start_new_session_or_stay() {
   if [[ "$EXP_ENV_ONLY" == "true" ]]; then
-    printf "You can now source the auth vars with: source $ENVIRONMENT_FILE\n"
+    printf "\r${slm}${bul}AWS session credentials ready $spc$gcl"
+    spinner_process 1
+    printf "${rws}$gcm    "
+    printf "\n\r${sle}\n"
     exit
   else
+    printf "\r${slm}${bul}New AWS session started $spc$gcl"
+    spinner_process 1
+    printf "${rws}$gcm    "
+    printf "\n\r${sle}\n"
     bash -c ". $ENVIRONMENT_FILE; exec zsh -i" #this is to start a new session in terminal
     rm $ENVIRONMENT_FILE &> /dev/null
     exit
@@ -178,43 +252,27 @@ fi
 
 # If bitwarden is setup, use it.
 if command -v bw &> /dev/null && grep -q "export BW_CONFIG_USE=yes" $SHELL_PROFILE; then
-  printf "${slm}${bul}Bitwarden enabled \033[1;32m✓\n\033[0m"
+  printf "${slm}${bul}Bitwarden enabled $gcm\n"
   bw_pwd="$(echo $BW_MPW | base64 --decode)"
   declare -x bw_pwd
   bw_email="$(echo $BW_EM | base64 --decode)"
   declare -x bw_email
 
-  # Get aws credentials from Bitwarden
-  printf "${slm}${bul}Accessing Bitwarden ∙∙∙\033[1;32m"
-
-  # Start loading spinner
-  spinner &
-  pid=$!
-  disown
-  trap "clean_up $pid" INT # Make sure spinner is killed if script is interrupted
-
-  login_unlock_bw  # ---------------------------------------\
-  AWS_2FA_TOKEN=$(bw get totp "$BW_AWS_IAM_NAME") #----------\-> These 3 take a while, so we have a spinner for feedback.
-  KEYCHAIN_PWD=$(bw get password "$BW_AWS_KEYCHAIN_NAME") #--/
-
-  # Stop spinner
-  kill $pid
-  trap - INT
-  printf "\033[3D" # positions cursor at branch status position
-  printf "\033[1;32m✓        \n\033[0m"
+  login_unlock_bw
+  get_creds_from_bw
 
   # Put keychain password in clipboard
   printf "$KEYCHAIN_PWD" | pbcopy
   # Print info message
-  printf "${slm}${bul}Your keychain password is now on the \e[4mclipboard\e[0m \033[1;32m↯\033[0m\n"
+  printf "${slm}${bul}Your keychain password is now on the clipboard \033[1;32mᵖᵃˢᵗᵉ\033[0m\n"
   printf "${slm}${bul}And here's a 2fa token for AWS vault: \033[1;32m$AWS_2FA_TOKEN\033[0m\n"
 fi
 
 # Login to aws with personal iam and export the needed credentials (env vars)
 printf "${slm}${bul}"
 aws-vault exec $PERSONAL_IAM_PROFILE -- env | grep "^AWS_" | while read line ; do export_to_env "$line"; done 
-if grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
-  printf "\r${slm}${bul}Login successful \033[1;32m✓\033[0m                                 \n"
+if ! grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
+  printf "\r${slm}${bul}Login failed \033[1;31m✗\033[0m                                 \n"
   printf "\r${sle}\n"
 fi
 
