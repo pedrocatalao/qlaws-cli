@@ -288,7 +288,7 @@ find_what_to_do() {
 show_commands() {
   printf "${slm}${bul}Available commands ${gcl}\e[3m◂\e[0m\n"
   printf "${slm}  ${gcl}▸${lcl} connect [hostname]  ${gcl}▸${lcl} assume [role-iam]\n"
-  printf "${slm}  ${gcl}▸${lcl} deploy [hostname]   ${gcl}▸${lcl} exit (leave session)\n"
+  printf "${slm}  ${gcl}▸${lcl} deploy [hostname]   ${gcl}▸${lcl} leave (leave role)\n"
 }
 
 # Logo string
