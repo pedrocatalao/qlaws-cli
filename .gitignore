@@ -1,0 +1,5 @@
+# ignore ALL .qlaws files
+.qlaws.*
+
+# ignore ALL .secret files
+.secret*
