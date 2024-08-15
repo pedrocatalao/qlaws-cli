@@ -1,0 +1,463 @@
+#!/bin/bash
+
+SCRIPT_NAME=$(basename "$0")
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# Initialize variables
+iam="root-iam"
+export_flag=false
+
+# Function to display help
+show_help() {
+  echo "Usage: $0 [-e iam] [-x] [-h]"
+  echo "  -a role               Assume iam role"
+  echo "  -x                    Export only (no new session)"
+  echo "  -h                    Display help"
+  echo
+  echo "After logging in:"
+  echo "  loadauth              When in export only mode, loads the credentials into your session."
+  echo "  assume [role iam]     Assumes a iam role and updates credentials so you can connects."
+  echo "  leave                 Goes back to parent role (root)."
+  echo "  connect [hostname]    Connects to a server (assuming you're in the right account)."
+  echo "  deploy [hostname]     To do: will trigger an app deployment to the specified server."
+}
+
+# Parse arguments
+while getopts ":a:xh" opt; do
+  case ${opt} in
+    a )
+      iam=$OPTARG 
+      ;;
+    x )
+      export_flag=true
+      ;;
+    h )
+      show_help
+      exit 0
+      ;;
+    \? )
+      echo "Invalid option: -$OPTARG" >&2
+      show_help
+      exit 1
+      ;;
+    : )
+      echo "Option -$OPTARG requires an argument." >&2
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+# Files
+setup_files() {
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  AWS_CONFIG="$HOME/.aws/config"
+  AWS_KEYCHAIN="$HOME/Library/Keychains/aws-vault.keychain-db"
+  SHELL_PROFILE="$HOME/.zshrc"
+  PARENT_CREDS="$SCRIPT_DIR/.qlaws.root"
+  ENVIRONMENT_FILE="$SCRIPT_DIR/.qlaws.env"
+  CONFIG_FILE="$SCRIPT_DIR/.qlaws.cfg"
+  KEYCHAIN_P="$SCRIPT_DIR/.secret-keychain"
+  TOKEN_2FA="$SCRIPT_DIR/.secret-token"
+
+  echo "# $SCRIPT_NAME ENVIRONMENT" > $ENVIRONMENT_FILE
+  export_to_env "AWS_ACCOUNT_PROMPT=$iam"
+  chmod a+x $ENVIRONMENT_FILE
+
+  if ! [[ -f "$CONFIG_FILE" ]]; then
+    echo "# $SCRIPT_NAME CONFIG" > $CONFIG_FILE
+    echo "export PATH=$SCRIPT_DIR:$PATH" >> $CONFIG_FILE
+    echo "export PARENT_CREDS=$PARENT_CREDS" >> $CONFIG_FILE
+    echo "export AWS_CONFIG=$AWS_CONFIG" >> $CONFIG_FILE
+    echo "export ENVIRONMENT_FILE=$ENVIRONMENT_FILE" >> $CONFIG_FILE
+    add_prompt_to_config
+    add_methods_to_config
+    chmod a+x $CONFIG_FILE
+  fi
+  source $CONFIG_FILE
+}
+
+# Colors
+lcl="[38;2;85;172;243m" # Blue
+gcl="\033[1;32m" # Green
+rcl="\033[1;31m" # Red
+ncl="\033[0m" # No color
+
+# Gfx side lines and stuff
+sls="${lcl}┏╾┈" # Side line start
+slm="${lcl}┃ " # Side line mid
+sle="${lcl}┗╾┈${ncl} " # Side line end
+spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
+spc="${gcl}${spinner[0]}" # Spinner characters
+rws="\033[${#spinner[0]}D" # Rewind spinner
+
+# More
+bul="${lcl}▬${ncl} " # Bullet
+gcm="${gcl}\e[3m✓\e[0m$ncl" # Green checkmark
+
+# Print the green check mark and play a sound
+print_gcm() {
+  printf "$gcm                     \n"
+  afplay "$DIR/sounds/ok.mp3" &
+}
+
+# Play the decoding sound
+play_decoding_sound() {
+  while :; do afplay "$DIR/sounds/interface.mp3"; done
+}
+
+# Spinner animation
+start_spinner() {
+  trap "clean_up" INT # Make sure spinner is killed if script is interrupted
+  stty -echo # Disable keyboard
+  printf " $spc"
+  spinner_process &
+  spinner_pid=$!
+  disown
+}
+
+# Stop spinner animation
+stop_spinner() {
+  kill $spinner_pid >/dev/null 2>&1
+  trap - INT
+  printf "${rws}" # rewinds cursor position
+  print_gcm
+  stty echo # Reenable keyboard
+}
+
+# Spinner animation process (detached)
+spinner_process() {
+  if [[ "$1" == "" ]]; then
+    while true; do for i in "${spinner[@]}"; do printf "${rws}$i"; sleep 0.05; done; done
+  else
+    for i in "${spinner[@]}"; do printf "${rws}$i"; sleep 0.05; done
+  fi
+}
+
+# Spinner clean up
+clean_up() {
+  kill $spinner_pid >/dev/null 2>&1
+  kill $sound_pid >/dev/null 2>&1
+  stty echo
+  exit
+}
+
+# Deshuffle animation
+fake_deshuffle() {
+  trap "clean_up" INT # Make sure stuff is killed if script is interrupted
+  play_decoding_sound &
+  sound_pid=$!
+  disown
+  word_len="${#1}"
+  for ((k=0; k<$word_len; k++)); do
+    len_left=$((word_len-k))
+    for ((i=0; i<3; i++)); do
+      for ((j=0; j<$len_left; j++)); do
+        printf "${2:$(( RANDOM % ${#2} )):1}"
+      done
+      sleep $3
+      printf "\033[${len_left}D"
+    done
+    printf "${1:$k:1}"
+  done
+  kill $sound_pid >/dev/null 2>&1
+}
+
+# Add prompt configuration to config file
+add_prompt_to_config() {
+  echo 'if [ ! -z "$AWS_VAULT" ]; then\
+  ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[yellow]%}("
+  ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg[green]%}✓%{$reset_color%}"
+  ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[red]%}✗%{$reset_color%}"
+  ZSH_THEME_GIT_PROMPT_SUFFIX="%{$fg[yellow]%})%{$reset_color%}"
+  PROMPT='"'"'%{$fg[$NCOLOR]%}${PERSONAL_IAM_PROFILE}%{$reset_color%}@%{$fg[cyan]%}${AWS_ACCOUNT_PROMPT}\
+%{$reset_color%}:%{$fg[magenta]%}%c\
+$(git_prompt_info) \
+%{$fg[red]%}%(!.#.»)%{$reset_color%} '"'"'
+  fi' >> $CONFIG_FILE
+}
+
+# Add additional methods to config file
+add_methods_to_config() {
+  echo '
+  # Export to env file
+  export_to_env() {
+    echo "export $1" >> $ENVIRONMENT_FILE
+  }
+  # Get role arn from .aws/config
+  get_role_arn() {
+    echo $(awk -v profile="profile $1" '"'"'
+    BEGIN {found = 0}
+    /^\[/{found = 0}
+    $0 ~ profile {found = 1}
+    found && /role_arn/ {print $3; exit}
+  '"'"' "$AWS_CONFIG")
+  }
+  # EC2 id translator - this will look for the settings file for the specified server, i.e. my.server.com and then return the ec2 id, i.e. i-1234567890
+  # You should write this method according to your server provisioning structure
+  find_ec2_by_host() {
+    host_file=$(find "$HOME/Dovetail/server-provisioning/hosts/" -type f -exec grep -l -w " $1" {} +)
+    echo $(cat $host_file | grep "ansible_host:" | awk -F": " '"'"'{print $2}'"'"') 
+  }
+  # Load credentials to current session
+  loadauth() {
+    source $ENVIRONMENT_FILE
+  }
+  # EC2 connect
+  connect() {
+    ssh -o ProxyCommand="sh -c '"'"'aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p'"'"'" deployer@$(find_ec2_by_host "$1")
+  }
+  # Assume a role
+  assume() {
+    echo "$(env | grep ^AWS_)" > $PARENT_CREDS
+    role_arn="$(get_role_arn $1)"
+    ASSUMED_CREDS=$(aws sts assume-role --role-arn "$role_arn" --role-session-name "deployer")
+    export_to_env "AWS_ACCESS_KEY_ID=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.AccessKeyId')\""
+    export_to_env "AWS_SESSION_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
+    export_to_env "AWS_SECURITY_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
+    export_to_env "AWS_SECRET_ACCESS_KEY=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SecretAccessKey')\""
+    export_to_env "AWS_SESSION_EXPIRATION=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.Expiration')\""
+    export_to_env "AWS_ACCOUNT_PROMPT=$1"
+    source $ENVIRONMENT_FILE
+  }
+  # Leave role
+  leave() {
+    cat "$PARENT_CREDS" | while read line ; do export_to_env "$line"; done
+    export_to_env "AWS_ACCOUNT_PROMPT=root-iam"
+    source $ENVIRONMENT_FILE
+  } ' >> $CONFIG_FILE
+}
+
+# Config
+run_config() {
+  if [[ -z "$PERSONAL_IAM_PROFILE" ]]; then
+    PERSONAL_IAM_PROFILE=$(awk -F'[\\[\\] ]+' '/^\[profile / {print $3; exit}' "$AWS_CONFIG")
+    if [[ -n "$PERSONAL_IAM_PROFILE" ]]; then
+      printf "Found aws profile: $PERSONAL_IAM_PROFILE \n"
+      printf "Is is correct? (y/n): "
+      read -n 1 profile_correct
+      printf "\n"
+    fi
+    
+    if [[ -z "$PERSONAL_IAM_PROFILE" || "$profile_correct" != "y" ]]; then
+      printf "Enter the IAM profile you want to use: "
+      read PERSONAL_IAM_PROFILE
+    fi
+    echo "export PERSONAL_IAM_PROFILE=$PERSONAL_IAM_PROFILE" >> $CONFIG_FILE
+  fi
+
+  if ! [[ -f "$KEYCHAIN_P" ]]; then
+    printf "I can unlock you aws-vault keychain for you as well as generate 2FA tokens\n"
+    if [[ -f "$AWS_KEYCHAIN" ]]; then
+      printf "I found your aws-vault keychain here: $AWS_KEYCHAIN\n"
+      printf "Enter the keychain password: "
+      read -s keychain_pwd
+      printf "\n"
+      enc_dec "$keychain_pwd" "$KEYCHAIN_P"
+    else
+      printf "Unable to find your aws-vault keychain in the usual place.\n"
+      printf "Do you want to specify he path? (y/n): "
+      read -n 1 specify_path
+      printf "\n"
+    fi
+
+    if [[ "$specify_path" == "y" ]]; then
+      printf "Enter the path to your keychain file: "
+      read AWS_KEYCHAIN
+      echo "export KEYCHAIN_FILE_PATH=$AWS_KEYCHAIN" >> $CONFIG_FILE
+    fi
+  fi
+
+  if ! [[ -f "$TOKEN_2FA" ]]; then
+    printf "Do you want me to automate 2FA? "
+    read -n 1 do_2fa
+    printf "\n"
+
+    if [[ "$do_2fa" == "y" ]]; then
+      printf "Enter your totp secret key (find it in your current authenticator app): "
+      read -s totp_secret
+      printf "\n"
+      enc_dec "$totp_secret" "$TOKEN_2FA"
+    fi
+  fi
+}
+
+add_config_to_shell_profile() {
+  line="source $CONFIG_FILE > /dev/null 2>&1"
+
+  if ! grep -Fxq "$line" "$SHELL_PROFILE"; then
+    echo "$line" >> "$SHELL_PROFILE"
+  fi
+}
+
+# Show commands
+show_commands() {
+  printf "${slm}${bul}Available commands ${gcl}\e[3m◂\e[0m\n"
+  printf "${slm}  ${gcl}▸${lcl} connect [hostname]  ${gcl}▸${lcl} assume [role-iam]\n"
+  printf "${slm}  ${gcl}▸${lcl} deploy [hostname]   ${gcl}▸${lcl} leave (leave role)\n"
+}
+
+# Logo string
+logo_string="-
+▄▀▀▄ █   ▄▀▀▄ █  ▐ ▄▀▀▀  ▀▀▀▀▀ ▀ ◣
+█  █ █   █▀▀█ █ █▐ ▀▀▀█  ▀▀▀▀ ▀ ◣
+ ▀▀▄ ▀▀▀ ▀  ▀ ▀▀ ▀ ▀▀▀▀  ▀▀▀ ▀ ◣
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+
+# Logo animation
+print_logo() {
+  printf "$sls"
+  IFS=$'\n' read -rd '' -a lines <<< "$logo_string"
+  for ((l=1; l<${#lines[@]}; l++)); do
+    color="$(echo ${!l})"
+    printf "\n${slm}${color}"
+    fake_deshuffle "${lines[l]}" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0008
+  done
+  printf "\n"
+}
+
+# Outro
+print_outro() {
+  printf "${slm}${bul}"
+  fake_deshuffle "Quick Login ² Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.001; print_gcm  
+}
+
+# Finish action
+finish() {
+  printf "\r${sle}\n"
+}
+
+# Encrypt and decrypt
+enc_dec() {
+  auth_openssl="-pass pass:$SCRIPT_NAME"
+  if [[ "$2" == "" ]]; then
+    openssl enc -d -aes-256-cbc -iter 1000 $auth_openssl -in "$1"
+  else
+    echo "$1" | openssl enc -aes-256-cbc -iter 1000 -salt $auth_openssl -out "$2"
+  fi
+}
+
+# 2FA totp generator
+totp(){
+  local key="${1}"
+  local timestamp="${2:-$(date +%s)}"
+  local key_hex=$(echo -n "${key}" | base32 -d | xxd -p | xargs | tr -d ' ')
+  local counter=$(printf %016x "$((timestamp / 30))")
+  local hmac=$(echo -n "${counter}" | xxd -r -p | openssl dgst -sha1 -mac hmac -macopt hexkey:"${key_hex}" | awk '{print $2}')
+  local offset=$((0x${hmac:39:1}))
+  local truncated=${hmac:2*offset:8}
+  local otp=$((0x${truncated} & 0x7fffffff))
+  printf "%06d\n" $((otp % 1000000))
+}
+
+# Prepare credentials
+prepare_credentials() {
+  printf "${slm}${bul}Preparing credentials "
+  start_spinner
+  keychain_pwd="$(enc_dec $KEYCHAIN_P)"
+  secret="$(enc_dec $TOKEN_2FA)"
+  stop_spinner
+  printf "${slm}${bul}Generating 2FA token "
+  printf "${spc}"
+  spinner_process 2
+  printf "${rws}▸ "
+  token="$(totp ${secret})"
+  fake_deshuffle "$token" "1234567890" 0.05
+  printf "\n"
+}
+
+# Unlock aws-vault keychain
+unlock_keychain() {
+  security -q -v unlock-keychain -p "$keychain_pwd" $AWS_KEYCHAIN > /dev/null 2>&1  
+}
+
+# Check if already in aws vault session
+check_existing_aws_session() {
+  if ! [ -z ${AWS_VAULT+x} ]; then
+    printf "Already in a session on $AWS_VAULT.\nExit this session before logging in again.\n"
+    exit 1
+  fi
+}
+
+# Execute login to aws
+login_to_aws() {
+  printf "${slm}${bul}Logging in to "
+  fake_deshuffle "$iam" "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.04
+  start_spinner
+  aws_env=$(aws-vault exec pedro-catalao-iam -t "$token" -- env) > /dev/null 2>&1
+  echo "$aws_env" | grep "^AWS_" | while read line ; do export_to_env "$line"; done
+  stop_spinner
+  source $ENVIRONMENT_FILE
+
+  if [[ "$iam" != "root-iam" ]]; then
+    printf "${slm}${bul}Assuming role"
+    start_spinner
+    assume_role
+    stop_spinner
+  fi
+
+  if ! grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
+    printf "\r${slm}${bul}Login failed \033[1;31m✗\033[0m                                 \n"
+    finish
+  elif [[ "$export_flag" == false ]]; then
+    printf "\r${slm}${bul}New AWS session started $spc$gcl"
+    spinner_process 2
+    stop_spinner
+    show_commands
+    finish
+    bash -c ". $ENVIRONMENT_FILE; exec zsh -i" #this is to start a new session in terminal
+    rm $ENVIRONMENT_FILE &> /dev/null
+  else
+    printf "\r${slm}${bul}Use ${gcl}loadauth${ncl} to load the credentials into current session"
+    print_gcm
+    show_commands
+    finish
+  fi  
+}
+
+# Export to env file
+export_to_env() {
+  echo "export $1" >> $ENVIRONMENT_FILE
+}
+
+# Get role arn from .aws/config
+get_role_arn() {
+  echo $(awk -v profile="profile $iam" '
+  BEGIN {found = 0}
+  /^\[/{found = 0}
+  $0 ~ profile {found = 1}
+  found && /role_arn/ {print $3; exit}
+' "$AWS_CONFIG")
+}
+
+# Assume a role
+assume_role() {
+  echo "$(env | grep ^AWS_ )" > $PARENT_CREDS
+  ASSUMED_CREDS=$(aws sts assume-role --role-arn "$(get_role_arn)" --role-session-name "deployer")
+  export_to_env "AWS_ACCESS_KEY_ID=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.AccessKeyId')\""
+  export_to_env "AWS_SESSION_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
+  export_to_env "AWS_SECURITY_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
+  export_to_env "AWS_SECRET_ACCESS_KEY=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SecretAccessKey')\""
+  export_to_env "AWS_SESSION_EXPIRATION=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.Expiration')\""
+}
+
+# Main script logic
+
+setup_files
+
+run_config
+
+add_config_to_shell_profile
+
+check_existing_aws_session
+
+print_logo "\033[35;96m" "\033[31;97m" "" "${rcl}" # Colors per line "" -> default
+
+print_outro
+
+prepare_credentials
+
+unlock_keychain
+
+login_to_aws
+
