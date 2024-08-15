@@ -1,13 +1,13 @@
 # ql-aws
-Bash script to facilitate logging in and assuming AWS roles.
-It unlocks the aws-vault keychain without user intervention.
-Also generates TOTP token for 2FA and uses it automatically.
-It also allows to stay in the same session for use within another script that requires changing accounts or roles.
-It looks cool :)
+### Bash script to facilitate logging in and assuming AWS roles.
+* Unlocks the aws-vault keychain without user intervention.
+* Generates TOTP token for 2FA and uses it automatically.
+* Also allows to stay in the same session for use within another script that requires changing accounts or roles.
+* It looks cool, too ;)
 
 ![ql-aws](docs/qlaws.gif)
 
-If you want to use it within a script, you can do something like this:
+#### If you want to use it within a script, you can do something like this:
 ```bash
 #!/bin/bash
 ql-aws -x
