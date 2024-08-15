@@ -279,11 +279,6 @@ add_config_to_shell_profile() {
   fi
 }
 
-# Find what to do
-find_what_to_do() {
- sleep 0.0001
-}
-
 # Show commands
 show_commands() {
   printf "${slm}${bul}Available commands ${gcl}\e[3m◂\e[0m\n"
@@ -331,27 +326,17 @@ enc_dec() {
   fi
 }
 
-# 2FA stuff
+# 2FA totp generator
 totp(){
-  timestamp=${2:-"$(date +%s)"}
-  hotp "${1}" "$((timestamp/30))"
-}
-
-hotp(){
-  local key_hex=$(echo -n "${1}" | base32 -d | xxd -p | xargs | tr -d ' ')
-  local counter_hex="$(printf %016x "${2}")" # Get 64 bit hex representation of the int counter
-  local string=$(hmac "${key_hex}" "${counter_hex}")
-  local -i offset=$((0x${string:39:1}))
-  local truncated=${string:2*offset:8}
-  local masked=$((0x${truncated} & 0x7fffffff))
-  printf "%06d\n" $((masked % 1000000))
-}
-
-hmac(){
   local key="${1}"
-  local data="${2}"
-  [[ -n "${data}" ]] || read -rd '' data
-  echo -n "${data}" | xxd -r -p | openssl dgst -sha1 -mac hmac -macopt hexkey:"${key}" | cut -d ' ' -f 2
+  local timestamp="${2:-$(date +%s)}"
+  local key_hex=$(echo -n "${key}" | base32 -d | xxd -p | xargs | tr -d ' ')
+  local counter=$(printf %016x "$((timestamp / 30))")
+  local hmac=$(echo -n "${counter}" | xxd -r -p | openssl dgst -sha1 -mac hmac -macopt hexkey:"${key_hex}" | awk '{print $2}')
+  local offset=$((0x${hmac:39:1}))
+  local truncated=${hmac:2*offset:8}
+  local otp=$((0x${truncated} & 0x7fffffff))
+  printf "%06d\n" $((otp % 1000000))
 }
 
 # Prepare credentials
@@ -450,8 +435,6 @@ run_config
 add_config_to_shell_profile
 
 check_existing_aws_session
-
-find_what_to_do
 
 print_logo "\033[35;96m" "\033[31;97m" "" "${rcl}" # Colors per line "" -> default
 
