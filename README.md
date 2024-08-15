@@ -1,34 +1,25 @@
 # aws-login
 Bash script that allows to login to an AWS account and assume roles while staying on the same terminal session (to use within another script).
 
-It supports automatically getting your credentials from Bitwarden.
+It unlocks the aws-vault keychain without user intervention.
 
-When you use it just to authenticate in the terminal, it doesn't add much to the existing `aws-vault` except for the Bitwarden integration:
-```
-radix@cobra:~ » aws-login myproject-aws-profile
-┏╾┈
-┃ █▀▀█ █   █ █▀▀    █   █▀▀█ █▀▀▀  ●  █▀▀▄
-┃ █▄▄█ █▄█▄█ ▀▀█ ▀▀ █   █  █ █ ▀█ ▀█▀ █  █
-┃ ▀  ▀  ▀ ▀  ▀▀▀    ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀ ▀  ▀
-┃ ▬ Bitwarden enabled ✓
-┃ ▬ Accessing Bitwarden ✓
-┃ ▬ Your keychain password is now on the clipboard ↯
-┃ ▬ And here's a 2fa token for AWS vault: 123456
-┃ ▬ Enter token for arn:aws:iam::123456789:mfa/pedro.catalao: 123456
-┃ ▬ Login successful ✓
-┗╾┈
-mypersonal-profile-iam@myproject-aws-profile:~ »
-```
+Also generates TOTP token for 2FA and uses it automatically.
 
-But when you use it within a script, you can do something like this:
+It looks cool :)
+
+![Example](docs/qlaws.gif)
+
+
+
+If you want to use it within a script, you can do something like this:
 ```bash
 #!/bin/bash
-aws-login --export-only my-personal-iam
-source .aws-login.env
+ql-aws -x
+ql-load
 terraform apply
 echo "server is created..."
-aws-login --export-only my-servers-account
-source .aws-login.env
+ql-aws -x -a my-servers-role
+ql-load
 ansible-playbook myproject.yml -i myserver.host
 echo "my application is installed"
 ```
