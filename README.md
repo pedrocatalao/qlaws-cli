@@ -23,4 +23,4 @@ ql-load
 ansible-playbook myproject.yml -i myserver.host
 echo "my application is installed"
 ```
-And it will login to different accounts (or assume role) and continue the script.
+It will login or assume roles and continue the main script.
