@@ -5,7 +5,7 @@
 * Also allows to stay in the same session for use within another script that requires changing accounts or roles.
 * It looks cool, too ;)
 
-![qlaws](docs/qlaws.gif)
+![qlaws](docs/qlaws1.gif)
 
 #### If you want to use it within a script, you can do something like this:
 ```bash
