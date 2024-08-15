@@ -1,15 +1,11 @@
 # ql-aws
-Bash script that allows to login to an AWS account and assume roles while staying on the same terminal session (to use within another script).
-
+Bash script to facilitate logging in and assuming AWS roles.
 It unlocks the aws-vault keychain without user intervention.
-
 Also generates TOTP token for 2FA and uses it automatically.
-
+It also allows to stay in the same session for use within another script that requires changing accounts or roles.
 It looks cool :)
 
-![Example](docs/qlaws.gif)
-
-
+![ql-aws](docs/qlaws.gif)
 
 If you want to use it within a script, you can do something like this:
 ```bash
