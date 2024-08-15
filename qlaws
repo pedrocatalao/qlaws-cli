@@ -308,10 +308,10 @@ show_commands() {
 
 # Logo string
 logo_string="-
-▄▀▀▄ █     ▄▀▀▄ █  ▐ ▄▀▀▀  ▀▀▀▀▀ ▀ ◣
-█  █ █   ▪ █▀▀█ █ █▐ ▀▀▀█  ▀▀▀▀ ▀ ◣
- ▀▀▄ ▀▀▀   ▀  ▀ ▀▀ ▀ ▀▀▀▀  ▀▀▀ ▀ ◣
-     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+░▄▀▀▄░█░░░░░▄▀▀▄░█░░▐░▄▀▀▀░░▀▀▀▀▀░▀░◣░
+░█░░█░█░░░▪░█▀▀█░█ █▐░▀▀▀█░░▀▀▀▀░▀░◣░░
+░░▀▀▄░▀▀▀░░░▀░░▀░▀▀░▀░▀▀▀▀░░▀▀▀░▀░◣░░░
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
 
 # Logo animation
 print_logo() {
@@ -443,7 +443,7 @@ add_config_to_shell_profile
 
 check_existing_aws_session
 
-print_logo "\033[35;96m" "\033[31;97m" "" "${rcl}" # Colors per line "" -> default
+print_logo "\033[35;96m" "" "" "${rcl}" # Colors per line "" -> default
 
 print_outro
 
