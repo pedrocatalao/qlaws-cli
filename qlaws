@@ -301,9 +301,11 @@ add_config_to_shell_profile() {
 
 # Show commands
 show_commands() {
-  printf "${slm}${bul}Available commands ${gcl}\e[3m◂\e[0m\n"
-  printf "${slm}  ${gcl}▸${lcl} connect [hostname]  ${gcl}▸${lcl} assume [role-iam]\n"
-  printf "${slm}  ${gcl}▸${lcl} deploy [hostname]   ${gcl}▸${lcl} leave (leave role)\n"
+  printf "${slm}${bul}Available commands \033[35;90m"
+  fake_deshuffle "━━━━━━━━━━━━━━━━━━━━━" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0008
+  printf "\n"
+  printf "${slm}  ${gcl}▪${lcl} connect [hostname]  ${gcl}▪${lcl} assume [role-iam]\n"
+  printf "${slm}  ${gcl}▪${lcl} deploy [hostname]   ${gcl}▪${lcl} leave (leave role)\n"
 }
 
 # Logo string
@@ -334,7 +336,7 @@ print_outro() {
 # Finish action
 finish() {
   printf "\r${sle}\n"
-  afplay "$SCRIPT_DIR/sounds/done.mp3"
+  afplay "$SCRIPT_DIR/sounds/done.mp3" &
 }
 
 # Encrypt and decrypt
