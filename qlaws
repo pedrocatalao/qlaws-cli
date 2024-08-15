@@ -301,9 +301,7 @@ add_config_to_shell_profile() {
 
 # Show commands
 show_commands() {
-  printf "${slm}${bul}Available commands \033[35;90m"
-  fake_deshuffle "━━━━━━━━━━━━━━━━━━━━━" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0008
-  printf "\n"
+  printf "${slm}${bul}Available commands${gcl}:\n"
   printf "${slm}  ${gcl}▪${lcl} connect [hostname]  ${gcl}▪${lcl} assume [role-iam]\n"
   printf "${slm}  ${gcl}▪${lcl} deploy [hostname]   ${gcl}▪${lcl} leave (leave role)\n"
 }
