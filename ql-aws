@@ -10,9 +10,16 @@ export_flag=false
 # Function to display help
 show_help() {
   echo "Usage: $0 [-e iam] [-x] [-h]"
-  echo "  -a role          Assume iam role"
-  echo "  -x               Export only (no new session)"
-  echo "  -h               Display help"
+  echo "  -a role               Assume iam role"
+  echo "  -x                    Export only (no new session)"
+  echo "  -h                    Display help"
+  echo
+  echo "After logging in:"
+  echo "  loadauth              When in export only mode, loads the credentials into your session."
+  echo "  assume [role iam]     Assumes a iam role and updates credentials so you can connects."
+  echo "  leave                 Goes back to parent role (root)."
+  echo "  connect [hostname]    Connects to a server (assuming you're in the right account)."
+  echo "  deploy [hostname]     To do: will trigger an app deployment to the specified server."
 }
 
 # Parse arguments
@@ -192,6 +199,11 @@ add_methods_to_config() {
     host_file=$(find "$HOME/Dovetail/server-provisioning/hosts/" -type f -exec grep -l -w " $1" {} +)
     echo $(cat $host_file | grep "ansible_host:" | awk -F": " '"'"'{print $2}'"'"') 
   }
+  # Load credentials to current session
+  loadauth() {
+    source $CONFIG_FILE
+    source $ENVIRONMENT_FILE
+  }
   # EC2 connect
   connect() {
     ssh -o ProxyCommand="sh -c '"'"'aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p'"'"'" deployer@$(find_ec2_by_host "$1")
@@ -288,10 +300,10 @@ show_commands() {
 
 # Logo string
 logo_string="-
-▄▀▀▄ █     ▄▀▀▄ █  ▐ ▄▀▀▀  ▀▀▀▀▀ ▀ ◣
-█  █ █   ▄ █▀▀█ █ █▐ ▀▀▀█  ▀▀▀▀ ▀ ◣
- ▀▀▄ ▀▀▀   ▀  ▀ ▀▀ ▀ ▀▀▀▀  ▀▀▀ ▀ ◣
-     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
+▄▀▀▄ █   ▄▀▀▄ █  ▐ ▄▀▀▀  ▀▀▀▀▀ ▀ ◣
+█  █ █   █▀▀█ █ █▐ ▀▀▀█  ▀▀▀▀ ▀ ◣
+ ▀▀▄ ▀▀▀ ▀  ▀ ▀▀ ▀ ▀▀▀▀  ▀▀▀ ▀ ◣
+     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀"
 
 # Logo animation
 print_logo() {
@@ -308,7 +320,7 @@ print_logo() {
 # Outro
 print_outro() {
   printf "${slm}${bul}"
-  fake_deshuffle "Quick Login ∙ Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.001; print_gcm  
+  fake_deshuffle "Quick Login ² Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.001; print_gcm  
 }
 
 # Finish action
