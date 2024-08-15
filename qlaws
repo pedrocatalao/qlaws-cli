@@ -399,11 +399,12 @@ login_to_aws() {
   echo "$aws_env" | grep "^AWS_" | while read line ; do export_to_env "$line"; done
   stop_spinner
   source $ENVIRONMENT_FILE
+  source $CONFIG_FILE
 
   if [[ "$iam" != "root-iam" ]]; then
     printf "${slm}${bul}Assuming role"
     start_spinner
-    assume_role
+    assume "$iam" > /dev/null 2>&1
     stop_spinner
   fi
 
@@ -430,27 +431,6 @@ login_to_aws() {
 # Export to env file
 export_to_env() {
   echo "export $1" >> $ENVIRONMENT_FILE
-}
-
-# Get role arn from .aws/config
-get_role_arn() {
-  echo $(awk -v profile="profile $iam" '
-  BEGIN {found = 0}
-  /^\[/{found = 0}
-  $0 ~ profile {found = 1}
-  found && /role_arn/ {print $3; exit}
-' "$AWS_CONFIG")
-}
-
-# Assume a role
-assume_role() {
-  echo "$(env | grep ^AWS_ )" > $PARENT_CREDS
-  ASSUMED_CREDS=$(aws sts assume-role --role-arn "$(get_role_arn)" --role-session-name "deployer")
-  export_to_env "AWS_ACCESS_KEY_ID=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.AccessKeyId')\""
-  export_to_env "AWS_SESSION_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
-  export_to_env "AWS_SECURITY_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
-  export_to_env "AWS_SECRET_ACCESS_KEY=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SecretAccessKey')\""
-  export_to_env "AWS_SESSION_EXPIRATION=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.Expiration')\""
 }
 
 # Main script logic
