@@ -202,7 +202,7 @@ add_methods_to_config() {
   # Load credentials to current session
   loadauth() {
     source $ENVIRONMENT_FILE
-    printf "Loaded credentials for $AWS_VAULT into environment\n"
+    printf "Loaded credentials for $AWS_ACCOUNT_PROMPT into environment\n"
   }
   # EC2 connect
   connect() {
@@ -220,7 +220,7 @@ add_methods_to_config() {
     export_to_env "AWS_SESSION_EXPIRATION=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.Expiration')\""
     export_to_env "AWS_ACCOUNT_PROMPT=$1"
     source $ENVIRONMENT_FILE
-    printf "Loaded credentials for $AWS_VAULT\n"
+    printf "Loaded credentials for $AWS_ACCOUNT_PROMPT into environment\n"
   }
   # Leave role
   leave() {
@@ -231,7 +231,7 @@ add_methods_to_config() {
       cat "$PARENT_CREDS" | while read line ; do export_to_env "$line"; done
       export_to_env "AWS_ACCOUNT_PROMPT=root-iam"
       source $ENVIRONMENT_FILE
-      printf "Left assume role back into $AWS_VAULT\n"
+      printf "Left assume role back into $AWS_ACCOUNT_PROMPT\n"
 
     fi
   } ' >> $CONFIG_FILE
@@ -334,6 +334,7 @@ print_outro() {
 # Finish action
 finish() {
   printf "\r${sle}\n"
+  afplay "$SCRIPT_DIR/sounds/done.mp3"
 }
 
 # Encrypt and decrypt
