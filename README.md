@@ -14,8 +14,7 @@ qlaws -x
 loadauth
 terraform apply
 echo "server is created..."
-qlaws -x -a my-servers-role
-loadauth
+assume my-servers-role
 ansible-playbook myproject.yml -i myserver.host
 echo "my application is installed"
 ```
