@@ -10,12 +10,15 @@
 #### If you want to use it within a script, you can do something like this:
 ```bash
 #!/bin/bash
-qlaws -x
-loadauth
+qlaws -x;loadauth
 terraform apply
 echo "server is created..."
-assume my-servers-role
-ansible-playbook myproject.yml -i myserver.host
-echo "my application is installed"
+assume my-first-server-role
+ansible-playbook myproject.yml -i my-first-server.host
+echo "application is installed on my first server"
+leave
+assume my-second-server-role
+ansible-playbook myproject.yml -i my-second-server.host
+echo "application is installed on my second server"
 ```
-It will login or assume roles and continue the main script.
+It will login and assume different roles while staying on the main script without the need for user input.
