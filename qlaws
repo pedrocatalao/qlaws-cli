@@ -78,9 +78,11 @@ setup_files() {
 }
 
 # Colors
-lcl="[38;2;85;172;243m" # Blue
+lcl="\033[38;2;85;172;243m" # Blue
 gcl="\033[1;32m" # Green
 rcl="\033[1;31m" # Red
+ycl="\033[0;33m" # Yellow
+wcl="\033[35;96m" # White
 ncl="\033[0m" # No color
 
 # Gfx side lines and stuff
@@ -90,14 +92,12 @@ sle="${lcl}┗╾┈${ncl} " # Side line end
 spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
 spc="${gcl}${spinner[0]}" # Spinner characters
 rws="\033[${#spinner[0]}D" # Rewind spinner
-
-# More
 bul="${lcl}▬${ncl} " # Bullet
-gcm="${gcl}\e[3m✓\e[0m$ncl" # Green checkmark
+chk="❤" # Checkmark
 
-# Print the green check mark and play a sound
-print_gcm() {
-  printf "$gcm                     \n"
+# Print colored symbol and play a sound
+print_symbol() {
+  printf "$2$1${ncl}%20s\n"
   afplay "$DIR/sounds/ok.mp3" &
 }
 
@@ -121,7 +121,7 @@ stop_spinner() {
   kill $spinner_pid >/dev/null 2>&1
   trap - INT
   printf "${rws}" # rewinds cursor position
-  print_gcm
+  print_symbol "$chk" "$gcl"
   stty echo # Reenable keyboard
 }
 
@@ -291,9 +291,9 @@ run_config() {
   fi
 }
 
+# Source the config file in the user's shell profile (if it's not there yet)
 add_config_to_shell_profile() {
   line="source $CONFIG_FILE > /dev/null 2>&1"
-
   if ! grep -Fxq "$line" "$SHELL_PROFILE"; then
     echo "$line" >> "$SHELL_PROFILE"
   fi
@@ -328,7 +328,7 @@ print_logo() {
 # Outro
 print_outro() {
   printf "${slm}${bul}"
-  fake_deshuffle "Quick Login · Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.001; print_gcm
+  fake_deshuffle "Quick Login · Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.001; print_symbol "$chk" "$gcl"
 }
 
 # Finish action
@@ -409,7 +409,8 @@ login_to_aws() {
   fi
 
   if ! grep -q "AWS_VAULT" "$ENVIRONMENT_FILE"; then
-    printf "\r${slm}${bul}Login failed \033[1;31m✗\033[0m                                 \n"
+    printf "\r${slm}${bul}Login failed "
+    print_symbol "✗" "${rcl}"
     finish
   elif [[ "$export_flag" == false ]]; then
     printf "\r${slm}${bul}New AWS session started $spc$gcl"
@@ -422,7 +423,7 @@ login_to_aws() {
     exit
   else
     printf "\r${slm}${bul}Use ${gcl}loadauth${ncl} to load the credentials into current session "
-    print_gcm
+    print_symbol "✦" "$ycl"
     show_commands
     finish
   fi  
@@ -443,7 +444,7 @@ add_config_to_shell_profile
 
 check_existing_aws_session
 
-print_logo "\033[35;96m" "" "" "${rcl}" # Colors per line "" -> default
+print_logo "$wcl" "" "" "$rcl" # Colors per line
 
 print_outro
 
