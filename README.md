@@ -12,7 +12,7 @@
 #!/bin/bash
 qlaws -x;loadauth
 terraform apply
-echo "server is created..."
+echo "servers are created..."
 assume my-first-server-role
 ansible-playbook myproject.yml -i my-first-server.host
 echo "application is installed on my first server"
