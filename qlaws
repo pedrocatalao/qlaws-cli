@@ -307,15 +307,16 @@ add_config_to_shell_profile() {
 
 # Print box
 print_box_start() {
-  printf "${sls}"
+  printf "${sls}%37s${rsls}"
 }
 
 print_box_mid() {
-  printf "\n${slm}"
+  printf "\n${slm}%40s${slm}"
+  printf "%.0s${rwc}" {1..42}
 }
 
 print_box_end() {
-  printf "\n${sle}\n"
+  printf "\n${sle}%36s${rsle}\n"
 }
 
 # Show commands
