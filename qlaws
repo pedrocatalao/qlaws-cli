@@ -70,6 +70,7 @@ setup_files() {
     echo "export PARENT_CREDS=$PARENT_CREDS" >> $CONFIG_FILE
     echo "export AWS_CONFIG=$AWS_CONFIG" >> $CONFIG_FILE
     echo "export ENVIRONMENT_FILE=$ENVIRONMENT_FILE" >> $CONFIG_FILE
+    echo "export CONFIG_FILE=$CONFIG_FILE" >> $CONFIG_FILE
     add_prompt_to_config
     add_methods_to_config
     chmod a+x $CONFIG_FILE
@@ -95,6 +96,7 @@ spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
 spc="${gcl}${spinner[0]}" # Spinner characters
 rws="\033[${#spinner[0]}D" # Rewind spinner characters
 rwc="\033[1D" # Rewind cursor 1 character
+mcu="\033[1A"
 bul="${lcl}▬${ncl} " # Bullet
 chk="❤" # Checkmark
 
@@ -205,6 +207,7 @@ add_methods_to_config() {
   # Load credentials to current session
   loadauth() {
     source $ENVIRONMENT_FILE
+    source $CONFIG_FILE
     printf "Loaded credentials for $AWS_ACCOUNT_PROMPT into environment\n"
   }
   # EC2 connect
@@ -235,8 +238,8 @@ add_methods_to_config() {
       export_to_env "AWS_ACCOUNT_PROMPT=root-iam"
       source $ENVIRONMENT_FILE
       printf "Left assume role back into $AWS_ACCOUNT_PROMPT\n"
-
     fi
+    source $CONFIG_FILE
   } ' >> $CONFIG_FILE
 }
 
@@ -304,16 +307,15 @@ add_config_to_shell_profile() {
 
 # Print box
 print_box_start() {
-  printf "${sls}%37s${rsls}"
+  printf "${sls}"
 }
 
 print_box_mid() {
-  printf "\n${slm}%40s${slm}"
-  printf "%.0s${rwc}" {1..42}
+  printf "\n${slm}"
 }
 
 print_box_end() {
-  printf "\n${sle}%36s${rsle}\n"
+  printf "\n${sle}\n"
 }
 
 # Show commands
@@ -338,7 +340,7 @@ print_logo() {
     color="$(echo ${!l})"
     print_box_mid
     printf "$color"
-    fake_deshuffle "${lines[l]}" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0008
+    fake_deshuffle "${lines[l]}" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0005
   done
 }
 
@@ -346,7 +348,7 @@ print_logo() {
 print_outro() {
   print_box_mid
   printf "${bul}"
-  fake_deshuffle "Quick Login · Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.001; print_symbol "$chk" "$gcl"
+  fake_deshuffle "Quick Login · Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.0005; print_symbol "$chk" "$gcl"
 }
 
 # Finish action
@@ -390,7 +392,7 @@ prepare_credentials() {
   spinner_process 2
   printf "${rws}▸ "
   token="$(totp ${secret})"
-  fake_deshuffle "$token" "1234567890" 0.05
+  fake_deshuffle "$token" "1234567890" 0.02
 }
 
 # Unlock aws-vault keychain
@@ -410,7 +412,7 @@ check_existing_aws_session() {
 # Execute login to aws
 login_to_aws() {
   print_box_mid;printf "${bul}Logging in to "
-  fake_deshuffle "$iam" "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.04
+  fake_deshuffle "$iam" "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.01
   start_spinner
   aws_env=$(aws-vault exec pedro-catalao-iam -t "$token" -- env) > /dev/null 2>&1
   echo "$aws_env" | grep "^AWS_" | while read line ; do export_to_env "$line"; done
