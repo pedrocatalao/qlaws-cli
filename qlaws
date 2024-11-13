@@ -66,7 +66,7 @@ setup_files() {
 
   if ! [[ -f "$CONFIG_FILE" ]]; then
     echo "# $SCRIPT_NAME CONFIG" > $CONFIG_FILE
-    echo "export PATH=$SCRIPT_DIR:$PATH" >> $CONFIG_FILE
+    echo 'export PATH='$SCRIPT_DIR':$PATH' >> $CONFIG_FILE
     echo "export PARENT_CREDS=$PARENT_CREDS" >> $CONFIG_FILE
     echo "export AWS_CONFIG=$AWS_CONFIG" >> $CONFIG_FILE
     echo "export ENVIRONMENT_FILE=$ENVIRONMENT_FILE" >> $CONFIG_FILE
@@ -145,6 +145,25 @@ clean_up() {
   kill $sound_pid >/dev/null 2>&1
   stty echo
   exit
+}
+
+shuffle_and_scroll() {
+  trap "clean_up" INT # Make sure stuff is killed if script is interrupted
+  play_decoding_sound &
+  sound_pid=$!
+  disown
+  local text="$1" length="$2" chars="$3"
+  for (( i=0; i<length && i<${#text}; i++ )); do
+    printf "%s" "${chars:RANDOM%${#chars}:1}"
+    sleep 0.005
+    printf "\b%s" "${text:$i:1}"
+  done
+  for (( i=1; i<=${#text} - length; i++ )); do
+    printf "\b%.0s" $(seq 1 $length)
+    printf "%.*s" "$length" "${text:i}"
+    sleep 0.2
+  done
+  kill $sound_pid >/dev/null 2>&1
 }
 
 # Deshuffle animation
@@ -341,7 +360,7 @@ print_logo() {
     color="$(echo ${!l})"
     print_box_mid
     printf "$color"
-    fake_deshuffle "${lines[l]}" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0005
+    fake_deshuffle "${lines[l]}" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0002
   done
 }
 
@@ -412,8 +431,8 @@ check_existing_aws_session() {
 
 # Execute login to aws
 login_to_aws() {
-  print_box_mid;printf "${bul}Logging in to "
-  fake_deshuffle "$iam" "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.01
+  print_box_mid;printf "${bul}"
+  shuffle_and_scroll "Logging in to $iam" 34 "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
   start_spinner
   aws_env=$(aws-vault exec pedro-catalao-iam -t "$token" -- env) > /dev/null 2>&1
   echo "$aws_env" | grep "^AWS_" | while read line ; do export_to_env "$line"; done
