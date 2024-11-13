@@ -434,7 +434,7 @@ login_to_aws() {
   print_box_mid;printf "${bul}"
   shuffle_and_scroll "Logging in to $iam" 34 "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
   start_spinner
-  aws_env=$(aws-vault exec pedro-catalao-iam -t "$token" -- env) > /dev/null 2>&1
+  aws_env=$(aws-vault exec "$PERSONAL_IAM_PROFILE" -t "$token" -- env) > /dev/null 2>&1
   echo "$aws_env" | grep "^AWS_" | while read line ; do export_to_env "$line"; done
   stop_spinner
   source $ENVIRONMENT_FILE
