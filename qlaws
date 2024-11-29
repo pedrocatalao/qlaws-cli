@@ -103,7 +103,7 @@ chk="❤" # Checkmark
 # Print colored symbol and play a sound
 print_symbol() {
   printf "$2$1${ncl}%2s"
-  afplay "$DIR/sounds/ok.mp3" &
+  afplay "$DIR/sounds/step.mp3" &
 }
 
 # Play the decoding sound
@@ -158,12 +158,13 @@ shuffle_and_scroll() {
     sleep 0.005
     printf "\b%s" "${text:$i:1}"
   done
+  kill $sound_pid >/dev/null 2>&1
   for (( i=1; i<=${#text} - length; i++ )); do
     printf "\b%.0s" $(seq 1 $length)
     printf "%.*s" "$length" "${text:i}"
+    afplay "$DIR/sounds/tick.mp3" &
     sleep 0.2
   done
-  kill $sound_pid >/dev/null 2>&1
 }
 
 # Deshuffle animation
@@ -374,7 +375,7 @@ print_outro() {
 # Finish action
 finish() {
   print_box_end
-  afplay "$SCRIPT_DIR/sounds/done.mp3" &
+  afplay "$SCRIPT_DIR/sounds/success.mp3" &
 }
 
 # Encrypt and decrypt
