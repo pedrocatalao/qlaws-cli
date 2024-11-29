@@ -1,7 +1,7 @@
 # qlaws-cli
 
 ### Dependencies
-* `base32` install with `brew install coreutils`
+* `base32` - install with `brew install coreutils`
 
 ### Bash script to facilitate logging in and assuming AWS roles.
 * Unlocks the aws-vault keychain without user intervention.
