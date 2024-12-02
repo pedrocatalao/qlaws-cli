@@ -2,6 +2,7 @@
 
 ### Dependencies
 * `base32` - install with `brew install coreutils`
+* `jq` - install with `brew install jq`
 
 ### Bash script to facilitate logging in and assuming AWS roles.
 * Unlocks the aws-vault keychain without user intervention.
