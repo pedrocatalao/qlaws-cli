@@ -232,13 +232,13 @@ add_methods_to_config() {
   }
   # EC2 connect
   connect() {
-    ssh -o ProxyCommand="sh -c '"'"'aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p'"'"'" deployer@$(find_ec2_by_host "$1")
+    ssh -o ProxyCommand="sh -c '"'"'aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p'"'"'" ubuntu@$(find_ec2_by_host "$1")
   }
   # Assume a role
   assume() {
     echo "$(env | grep ^AWS_)" > $PARENT_CREDS
     role_arn="$(get_role_arn $1)"
-    ASSUMED_CREDS=$(aws sts assume-role --role-arn "$role_arn" --role-session-name "deployer")
+    ASSUMED_CREDS=$(aws sts assume-role --role-arn "$role_arn" --role-session-name "ubuntu")
     export_to_env "AWS_ACCESS_KEY_ID=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.AccessKeyId')\""
     export_to_env "AWS_SESSION_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
     export_to_env "AWS_SECURITY_TOKEN=\"$(echo "$ASSUMED_CREDS" | jq '.Credentials.SessionToken')\""
