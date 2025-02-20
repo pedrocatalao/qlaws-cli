@@ -2,6 +2,8 @@
 
 SCRIPT_NAME=$(basename "$0")
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.cfg"
 
 # Initialize variables
 iam="root-iam"
@@ -9,24 +11,30 @@ export_flag=false
 
 # Function to display help
 show_help() {
-  echo "Usage: $0 [-e iam] [-x] [-h]"
+  echo "Usage: $0 [-a | -c iam] [-x] [-h] [-q | -Q]"
   echo "  -a role               Assume iam role"
   echo "  -x                    Export only (no new session)"
+  echo "  -c                    Show instances running and connect selected one"
+  echo "  -q                    Go quicker (and reset setting)"
+  echo "  -Q                    Go quicker (and store setting)"
   echo "  -h                    Display help"
   echo
   echo "After logging in:"
   echo "  loadauth              When in export only mode, loads the credentials into your session."
   echo "  assume [role iam]     Assumes a iam role and updates credentials so you can connects."
-  echo "  leave                 Goes back to parent role (root)."
   echo "  connect [hostname]    Connects to a server (assuming you're in the right account)."
-  echo "  deploy [hostname]     To do: will trigger an app deployment to the specified server."
+  echo "  leave                 Goes back to parent role (root)."
 }
 
 # Parse arguments
-while getopts ":a:xh" opt; do
+while getopts ":a:c:xhqQ" opt; do
   case ${opt} in
     a )
-      iam=$OPTARG 
+      iam=$OPTARG
+      ;;
+    c )
+      iam=$OPTARG
+      SHOW_INSTANCE_MENU=true
       ;;
     x )
       export_flag=true
@@ -34,6 +42,14 @@ while getopts ":a:xh" opt; do
     h )
       show_help
       exit 0
+      ;;
+    q )
+      sed -i '' '/^export quick=true$/d' $CONFIG_FILE
+      quick=true
+      ;;
+    Q )
+      echo "export quick=true" >> $CONFIG_FILE
+      quick=true
       ;;
     \? )
       echo "Invalid option: -$OPTARG" >&2
@@ -50,13 +66,12 @@ done
 
 # Files
 setup_files() {
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   AWS_CONFIG="$HOME/.aws/config"
   AWS_KEYCHAIN="$HOME/Library/Keychains/aws-vault.keychain-db"
   SHELL_PROFILE="$HOME/.zshrc"
+  INSTANCE_LIST_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.ec2"
   PARENT_CREDS="$SCRIPT_DIR/.$SCRIPT_NAME.root"
   ENVIRONMENT_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.env"
-  CONFIG_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.cfg"
   KEYCHAIN_P="$SCRIPT_DIR/.secret.keychain"
   TOKEN_2FA="$SCRIPT_DIR/.secret.token"
 
@@ -106,6 +121,11 @@ print_symbol() {
   afplay "$DIR/sounds/step.mp3" &
 }
 
+# Custom sleep
+sleep_or() {
+  [ "$quick" = "true" ] || sleep "$1";
+}
+
 # Play the decoding sound
 play_decoding_sound() {
   while :; do afplay "$DIR/sounds/interface.mp3"; done
@@ -133,9 +153,9 @@ stop_spinner() {
 # Spinner animation process (detached)
 spinner_process() {
   if [[ "$1" == "" ]]; then
-    while true; do for i in "${spinner[@]}"; do printf "${rws}$i"; sleep 0.05; done; done
+    while true; do for i in "${spinner[@]}"; do printf "${rws}$i"; sleep_or 0.05; done; done
   else
-    for i in "${spinner[@]}"; do printf "${rws}$i"; sleep 0.05; done
+    for i in "${spinner[@]}"; do printf "${rws}$i"; sleep_or 0.05; done
   fi
 }
 
@@ -155,7 +175,7 @@ shuffle_and_scroll() {
   local text="$1" length="$2" chars="$3"
   for (( i=0; i<length && i<${#text}; i++ )); do
     printf "%s" "${chars:RANDOM%${#chars}:1}"
-    sleep 0.005
+    sleep_or 0.005
     printf "\b%s" "${text:$i:1}"
   done
   kill $sound_pid >/dev/null 2>&1
@@ -163,7 +183,7 @@ shuffle_and_scroll() {
     printf "\b%.0s" $(seq 1 $length)
     printf "%.*s" "$length" "${text:i}"
     afplay "$DIR/sounds/tick.mp3" &
-    sleep 0.2
+    sleep_or 0.2
   done
 }
 
@@ -180,7 +200,7 @@ fake_deshuffle() {
       for ((j=0; j<$len_left; j++)); do
         printf "${2:$(( RANDOM % ${#2} )):1}"
       done
-      sleep $3
+      sleep_or $3
       printf "\033[${len_left}D"
     done
     printf "${1:$k:1}"
@@ -342,8 +362,8 @@ print_box_end() {
 # Show commands
 show_commands() {
   print_box_mid;printf "${bul}Available commands${gcl}:"
-  print_box_mid;printf "  ${gcl}▪${lcl} connect [host] ${gcl}▪${lcl} assume [role-iam]"
-  print_box_mid;printf "  ${gcl}▪${lcl} deploy [host]  ${gcl}▪${lcl} leave (to root)"
+  print_box_mid;printf "  ${gcl}▪${lcl} connect [host]  ${gcl}▪${lcl} assume [role-iam]"
+  print_box_mid;printf "  ${gcl}▪${lcl} leave (to root) ${gcl}▪${lcl} loadauth"
 }
 
 # Logo string
@@ -362,6 +382,59 @@ print_logo() {
     print_box_mid
     printf "$color"
     fake_deshuffle "${lines[l]}" "▁▂▃▄▅▆▇█▉▊▋▌▍▎▏▐░▒▓▕▖▗▘▙▚▛▜▝▞▟" 0.0002
+  done
+}
+
+printtab() {
+    local str="$1"
+    printf "%-37s" "$str"
+}
+
+# Instance menu
+display_menu() {
+    tput rc
+    for i in "${!lines[@]}"; do
+        if [ "$i" -eq "$selected_index" ]; then
+            printf "$(tput setab 244)    ${gcl}▪${ncl}$(tput setab 244) $(tput setaf 15)$(printtab "${lines[$i]}")$(tput sgr0)\n"
+        else
+            printf "    ${gcl}▪${ncl} $(printtab "${lines[$i]}")\n"
+        fi
+    done
+    tput rc
+    if [ "0" -eq "$selected_index" ]; then
+        tput cud $selected_index; tput cuu 1
+    else
+        tput cud $selected_index 0
+    fi
+}
+
+# Menu interface handler
+instance_menu() {
+  aws ec2 describe-instances --no-cli-pager --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value | [0]]' --output text > $INSTANCE_LIST_FILE
+  lines=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+      lines+=("$line")
+  done < $INSTANCE_LIST_FILE
+  selected_index=0
+  menu_height=${#lines[@]}
+  printf "  ${rcl}➜ ${ncl}Start SSM session on:\n"
+  for i in "${!lines[@]}"; do echo; done
+  tput cuu $menu_height; tput sc
+  while true; do
+      display_menu
+      read -rsn1 input
+      if [[ "$input" == $'\x1b' ]]; then
+          read -rsn2 input
+          if [[ "$input" == '[A' ]]; then ((selected_index--)); [ "$selected_index" -lt 0 ] && selected_index=0
+          elif [[ "$input" == '[B' ]]; then ((selected_index++)); [ "$selected_index" -ge "${#lines[@]}" ] && selected_index=$((${#lines[@]} - 1))
+          fi
+      elif [[ "$input" == "" ]]; then
+          tput rc
+          tput cud $menu_height
+          ec2_name="${lines[$selected_index]}"
+          aws ssm start-session --target $( aws ec2 describe-instances --region eu-west-1 --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
+          break
+      fi
   done
 }
 
@@ -457,11 +530,17 @@ login_to_aws() {
     print_box_mid;printf "\r${slm}${bul}New AWS session started $spc$gcl"
     spinner_process 2
     stop_spinner
-    show_commands
-    finish
-    bash -c ". $ENVIRONMENT_FILE; exec zsh -i" #this is to start a new session in terminal
-    rm $ENVIRONMENT_FILE &> /dev/null
-    exit
+    if [[ "$SHOW_INSTANCE_MENU" == true ]];then
+      finish
+      printf $ncl
+      instance_menu
+    else
+      show_commands
+      finish
+      bash -c ". $ENVIRONMENT_FILE; exec zsh -i" #this is to start a new session in terminal
+      rm $ENVIRONMENT_FILE &> /dev/null
+      exit
+    fi
   else
     print_box_mid;printf "\r${slm}${bul}Use ${gcl}loadauth${ncl} to load credentials "
     print_symbol "✦" "$ycl"
@@ -494,4 +573,3 @@ prepare_credentials
 unlock_keychain
 
 login_to_aws
-
