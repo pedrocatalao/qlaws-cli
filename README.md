@@ -12,7 +12,7 @@
 
 ### Options
 ```
-Usage: /Users/pedro/Git/qlaws-cli/qlaws [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]
+Usage: qlaws [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]
   -a iam                Assume iam role
   -c iam                Show instances running and chose one to connect
   -r region             Specify region
