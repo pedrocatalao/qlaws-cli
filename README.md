@@ -1,10 +1,11 @@
 # qlaws-cli
+Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 instances.
 
 ### Dependencies
 * `base32` - install with `brew install coreutils`
 * `jq` - install with `brew install jq`
 
-### Bash script to facilitate logging in and assuming AWS roles.
+### Features
 * Unlocks the aws-vault keychain without user intervention.
 * Generates TOTP token for 2FA and uses it automatically.
 * Also allows to stay in the same session for use within another script that requires changing accounts or roles.
