@@ -9,6 +9,9 @@ CONFIG_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.cfg"
 iam="root-iam"
 export_flag=false
 
+# Make sure stuff is killed if script is interrupted
+trap "clean_up" INT
+
 # Function to display help
 show_help() {
   echo "Usage: $0 [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]"
@@ -95,121 +98,6 @@ setup_files() {
     chmod a+x $CONFIG_FILE
   fi
   source $CONFIG_FILE
-}
-
-# Colors
-lcl="\033[38;2;85;172;243m" # Blue
-gcl="\033[1;32m" # Green
-rcl="\033[1;31m" # Red
-ycl="\033[0;33m" # Yellow
-wcl="\033[35;96m" # White
-ncl="\033[0m" # No color
-
-# Gfx side lines and stuff
-sls="${lcl}┏╾┈" # Side line start
-slm="${lcl}┃ " # Side line mid
-sle="${lcl}┗╾┈${ncl} " # Side line end
-rsls="${lcl}┈╼┓"
-rsle="${lcl}┈╼┛"
-spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
-spc="${gcl}${spinner[0]}" # Spinner characters
-rws="\033[${#spinner[0]}D" # Rewind spinner characters
-rwc="\033[1D" # Rewind cursor 1 character
-mcu="\033[1A"
-bul="${lcl}▬${ncl} " # Bullet
-chk="❤" # Checkmark
-
-# Print colored symbol and play a sound
-print_symbol() {
-  printf "$2$1${ncl}%2s"
-  afplay "$DIR/sounds/step.mp3" &
-}
-
-# Custom sleep
-sleep_or() {
-  [ "$quick" = "true" ] || sleep "$1";
-}
-
-# Play the decoding sound
-play_decoding_sound() {
-  while :; do afplay "$DIR/sounds/interface.mp3"; done
-}
-
-# Spinner animation
-start_spinner() {
-  trap "clean_up" INT # Make sure spinner is killed if script is interrupted
-  stty -echo # Disable keyboard
-  printf " $spc"
-  spinner_process &
-  spinner_pid=$!
-  disown
-}
-
-# Stop spinner animation
-stop_spinner() {
-  kill $spinner_pid >/dev/null 2>&1
-  trap - INT
-  printf "${rws}" # rewinds cursor position
-  [ -z "$1" ] && print_symbol "✗" "$rcl" || print_symbol "$chk" "$gcl"
-  stty echo # Reenable keyboard
-}
-
-# Spinner animation process (detached)
-spinner_process() {
-  if [[ "$1" == "" ]]; then
-    while true; do for i in "${spinner[@]}"; do printf "${rws}$i"; sleep_or 0.05; done; done
-  else
-    for i in "${spinner[@]}"; do printf "${rws}$i"; sleep_or 0.05; done
-  fi
-}
-
-# Spinner clean up
-clean_up() {
-  kill $spinner_pid >/dev/null 2>&1
-  kill $sound_pid >/dev/null 2>&1
-  stty echo
-  exit
-}
-
-shuffle_and_scroll() {
-  trap "clean_up" INT # Make sure stuff is killed if script is interrupted
-  play_decoding_sound &
-  sound_pid=$!
-  disown
-  local text="$1" length="$2" chars="$3"
-  for (( i=0; i<length && i<${#text}; i++ )); do
-    printf "%s" "${chars:RANDOM%${#chars}:1}"
-    sleep_or 0.005
-    printf "\b%s" "${text:$i:1}"
-  done
-  kill $sound_pid >/dev/null 2>&1
-  for (( i=1; i<=${#text} - length; i++ )); do
-    printf "\b%.0s" $(seq 1 $length)
-    printf "%.*s" "$length" "${text:i}"
-    afplay "$DIR/sounds/tick.mp3" &
-    sleep_or 0.2
-  done
-}
-
-# Deshuffle animation
-fake_deshuffle() {
-  trap "clean_up" INT # Make sure stuff is killed if script is interrupted
-  play_decoding_sound &
-  sound_pid=$!
-  disown
-  word_len="${#1}"
-  for ((k=0; k<$word_len; k++)); do
-    len_left=$((word_len-k))
-    for ((i=0; i<3; i++)); do
-      for ((j=0; j<$len_left; j++)); do
-        printf "${2:$(( RANDOM % ${#2} )):1}"
-      done
-      sleep_or $3
-      printf "\033[${len_left}D"
-    done
-    printf "${1:$k:1}"
-  done
-  kill $sound_pid >/dev/null 2>&1
 }
 
 # Add prompt configuration to config file
@@ -349,6 +237,124 @@ add_config_to_shell_profile() {
   fi
 }
 
+# Export to env file
+export_to_env() {
+  echo "export $1" >> $ENVIRONMENT_FILE
+}
+
+# Colors
+lcl="\033[38;2;85;172;243m" # Blue
+gcl="\033[1;32m" # Green
+rcl="\033[1;31m" # Red
+ycl="\033[0;33m" # Yellow
+wcl="\033[35;96m" # White
+ncl="\033[0m" # No color
+
+# Gfx side lines and stuff
+sls="${lcl}┏╾┈" # Side line start
+slm="${lcl}┃ " # Side line mid
+sle="${lcl}┗╾┈${ncl} " # Side line end
+rsls="${lcl}┈╼┓"
+rsle="${lcl}┈╼┛"
+spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
+spc="${gcl}${spinner[0]}" # Spinner characters
+rws="\033[${#spinner[0]}D" # Rewind spinner characters
+rwc="\033[1D" # Rewind cursor 1 character
+mcu="\033[1A"
+bul="${lcl}▬${ncl} " # Bullet
+chk="❤" # Checkmark
+
+# Print colored symbol and play a sound
+print_symbol() {
+  printf "$2$1${ncl}%2s"
+  afplay "$DIR/sounds/step.mp3" &
+}
+
+# Custom sleep
+sleep_or() {
+  [ "$quick" = "true" ] || sleep "$1";
+}
+
+# Play the decoding sound
+play_decoding_sound() {
+  while :; do afplay "$DIR/sounds/interface.mp3"; done
+}
+
+# Spinner animation
+start_spinner() {
+  stty -echo # Disable keyboard
+  printf " $spc"
+  spinner_process &
+  spinner_pid=$!
+  disown
+}
+
+# Stop spinner animation
+stop_spinner() {
+  kill $spinner_pid >/dev/null 2>&1
+  printf "${rws}" # rewinds cursor position
+  [ -z "$1" ] && print_symbol "✗" "$rcl" || print_symbol "$chk" "$gcl"
+  stty echo # Reenable keyboard
+}
+
+# Spinner animation process (detached)
+spinner_process() {
+  if [[ "$1" == "" ]]; then
+    while true; do for i in "${spinner[@]}"; do printf "${rws}$i"; sleep_or 0.05; done; done
+  else
+    for i in "${spinner[@]}"; do printf "${rws}$i"; sleep_or 0.05; done
+  fi
+}
+
+# Spinner clean up
+clean_up() {
+  printf "\e[?25h"
+  kill $spinner_pid >/dev/null 2>&1
+  kill $sound_pid >/dev/null 2>&1
+  stty echo
+  exit
+}
+
+shuffle_and_scroll() {
+  play_decoding_sound &
+  sound_pid=$!
+  disown
+  local text="$1" length="$2" chars="$3"
+  for (( i=0; i<length && i<${#text}; i++ )); do
+    printf "%s" "${chars:RANDOM%${#chars}:1}"
+    sleep_or 0.005
+    printf "\b%s" "${text:$i:1}"
+  done
+  kill $sound_pid >/dev/null 2>&1
+  for (( i=1; i<=${#text} - length; i++ )); do
+    printf "\b%.0s" $(seq 1 $length)
+    printf "%.*s" "$length" "${text:i}"
+    afplay "$DIR/sounds/tick.mp3" &
+    sleep_or 0.2
+  done
+}
+
+# Deshuffle animation
+fake_deshuffle() {
+  trap "clean_up" INT # Make sure stuff is killed if script is interrupted
+  play_decoding_sound &
+  sound_pid=$!
+  disown
+  word_len="${#1}"
+  for ((k=0; k<$word_len; k++)); do
+    len_left=$((word_len-k))
+    for ((i=0; i<3; i++)); do
+      for ((j=0; j<$len_left; j++)); do
+        printf "${2:$(( RANDOM % ${#2} )):1}"
+      done
+      sleep_or $3
+      printf "\033[${len_left}D"
+    done
+    printf "${1:$k:1}"
+  done
+  kill $sound_pid >/dev/null 2>&1
+}
+
 # Print box
 print_box_start() {
   printf "${sls}%37s${rsls}"
@@ -400,7 +406,7 @@ display_menu() {
   tput rc
   for i in "${!lines[@]}"; do
     if [ "$i" -eq "$selected_index" ]; then
-      printf "$(tput setab 244)    ${gcl}▪${ncl}$(tput setab 244) $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)\n"
+      printf "\e[?25l\e[100;90m    ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)\n"
     else
       printf "    ${gcl}▪${ncl} $(print_with_pad "${lines[$i]}")\n"
     fi
@@ -439,6 +445,7 @@ instance_menu() {
       tput rc
       tput cud $menu_height
       ec2_name="${lines[$selected_index]}"
+      printf "\e[?25h"
       aws ssm start-session $REGION_PARAM --target $( aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
       break
     fi
@@ -554,11 +561,6 @@ login_to_aws() {
     show_commands
     finish "success"
   fi  
-}
-
-# Export to env file
-export_to_env() {
-  echo "export $1" >> $ENVIRONMENT_FILE
 }
 
 # Main script logic
