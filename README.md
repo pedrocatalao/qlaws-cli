@@ -9,6 +9,7 @@
 * Generates TOTP token for 2FA and uses it automatically.
 * Also allows to stay in the same session for use within another script that requires changing accounts or roles.
 * It looks cool, too ;)
+![qlaws22](https://github.com/user-attachments/assets/c6950efd-bf4f-4d72-9118-c7d129a0cc79)
 
 ![qlaws](docs/qlaws1.gif)
 
