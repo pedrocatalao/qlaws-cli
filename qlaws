@@ -389,7 +389,8 @@ print_logo() {
   done
 }
 
-printtab() {
+# Print string with padding
+print_with_pad() {
     local str="$1"
     printf "%-37s" "$str"
 }
@@ -399,9 +400,9 @@ display_menu() {
   tput rc
   for i in "${!lines[@]}"; do
     if [ "$i" -eq "$selected_index" ]; then
-      printf "$(tput setab 244)    ${gcl}▪${ncl}$(tput setab 244) $(tput setaf 15)$(printtab "${lines[$i]}")$(tput sgr0)\n"
+      printf "$(tput setab 244)    ${gcl}▪${ncl}$(tput setab 244) $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)\n"
     else
-      printf "    ${gcl}▪${ncl} $(printtab "${lines[$i]}")\n"
+      printf "    ${gcl}▪${ncl} $(print_with_pad "${lines[$i]}")\n"
     fi
   done
   tput rc
