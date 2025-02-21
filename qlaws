@@ -306,9 +306,13 @@ spinner_process() {
   fi
 }
 
+# Cursor
+show_cursor() { printf "\e[?25h"; }
+hide_cursor() { printf "\e[?25l"; }
+
 # Spinner clean up
 clean_up() {
-  printf "\e[?25h"
+  show_cursor
   kill $spinner_pid >/dev/null 2>&1
   kill $sound_pid >/dev/null 2>&1
   stty echo
@@ -385,6 +389,7 @@ logo_string="-
 
 # Logo animation
 print_logo() {
+  hide_cursor
   print_box_start
   IFS=$'\n' read -rd '' -a lines <<< "$logo_string"
   for ((l=1; l<${#lines[@]}; l++)); do
@@ -406,7 +411,7 @@ display_menu() {
   tput rc
   for i in "${!lines[@]}"; do
     if [ "$i" -eq "$selected_index" ]; then
-      printf "\e[?25l\e[100;90m    ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)\n"
+      printf "\e[100;90m    ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)\n"
     else
       printf "    ${gcl}▪${ncl} $(print_with_pad "${lines[$i]}")\n"
     fi
@@ -445,7 +450,7 @@ instance_menu() {
       tput rc
       tput cud $menu_height
       ec2_name="${lines[$selected_index]}"
-      printf "\e[?25h"
+      show_cursor
       aws ssm start-session $REGION_PARAM --target $( aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
       break
     fi
@@ -463,6 +468,7 @@ print_outro() {
 finish() {
   print_box_end
   afplay "$SCRIPT_DIR/sounds/$1.mp3" &
+  show_cursor
 }
 
 # Encrypt and decrypt
