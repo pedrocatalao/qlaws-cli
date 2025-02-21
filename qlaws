@@ -396,20 +396,17 @@ printtab() {
 
 # Instance menu
 display_menu() {
-    tput rc
-    for i in "${!lines[@]}"; do
-        if [ "$i" -eq "$selected_index" ]; then
-            printf "$(tput setab 244)    ${gcl}▪${ncl}$(tput setab 244) $(tput setaf 15)$(printtab "${lines[$i]}")$(tput sgr0)\n"
-        else
-            printf "    ${gcl}▪${ncl} $(printtab "${lines[$i]}")\n"
-        fi
-    done
-    tput rc
-    if [ "0" -eq "$selected_index" ]; then
-        tput cud $selected_index; tput cuu 1
+  tput rc
+  for i in "${!lines[@]}"; do
+    if [ "$i" -eq "$selected_index" ]; then
+      printf "$(tput setab 244)    ${gcl}▪${ncl}$(tput setab 244) $(tput setaf 15)$(printtab "${lines[$i]}")$(tput sgr0)\n"
     else
-        tput cud $selected_index 0
+      printf "    ${gcl}▪${ncl} $(printtab "${lines[$i]}")\n"
     fi
+  done
+  tput rc
+  tput cud $selected_index;
+  [ "0" -eq "$selected_index" ] && tput cuu 1
 }
 
 # Menu interface handler
@@ -417,7 +414,7 @@ instance_menu() {
   aws ec2 describe-instances $REGION_PARAM --no-cli-pager --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value | [0]]' --output text > $INSTANCE_LIST_FILE
   lines=()
   while IFS= read -r line || [[ -n "$line" ]]; do
-      lines+=("$line")
+    lines+=("$line")
   done < $INSTANCE_LIST_FILE
   selected_index=0
   menu_height=${#lines[@]}
@@ -425,20 +422,20 @@ instance_menu() {
   for i in "${!lines[@]}"; do echo; done
   tput cuu $menu_height; tput sc
   while true; do
-      display_menu
-      read -rsn1 input
-      if [[ "$input" == $'\x1b' ]]; then
-          read -rsn2 input
-          if [[ "$input" == '[A' ]]; then ((selected_index--)); [ "$selected_index" -lt 0 ] && selected_index=0
-          elif [[ "$input" == '[B' ]]; then ((selected_index++)); [ "$selected_index" -ge "${#lines[@]}" ] && selected_index=$((${#lines[@]} - 1))
-          fi
-      elif [[ "$input" == "" ]]; then
-          tput rc
-          tput cud $menu_height
-          ec2_name="${lines[$selected_index]}"
-          aws ssm start-session $REGION_PARAM --target $( aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
-          break
+    display_menu
+    read -rsn1 input
+    if [[ "$input" == $'\x1b' ]]; then
+      read -rsn2 input
+      if [[ "$input" == '[A' ]]; then ((selected_index--)); [ "$selected_index" -lt 0 ] && selected_index=0
+      elif [[ "$input" == '[B' ]]; then ((selected_index++)); [ "$selected_index" -ge "${#lines[@]}" ] && selected_index=$((${#lines[@]} - 1))
       fi
+    elif [[ "$input" == "" ]]; then
+      tput rc
+      tput cud $menu_height
+      ec2_name="${lines[$selected_index]}"
+      aws ssm start-session $REGION_PARAM --target $( aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
+      break
+    fi
   done
 }
 
