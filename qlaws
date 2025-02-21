@@ -11,10 +11,11 @@ export_flag=false
 
 # Function to display help
 show_help() {
-  echo "Usage: $0 [-a | -c iam] [-x] [-h] [-q | -Q]"
-  echo "  -a role               Assume iam role"
+  echo "Usage: $0 [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]"
+  echo "  -a iam                Assume iam role"
+  echo "  -c iam                Show instances running and chose one to connect"
+  echo "  -r region             Specify region"
   echo "  -x                    Export only (no new session)"
-  echo "  -c                    Show instances running and connect selected one"
   echo "  -q                    Go quicker (and reset setting)"
   echo "  -Q                    Go quicker (and store setting)"
   echo "  -h                    Display help"
@@ -27,7 +28,7 @@ show_help() {
 }
 
 # Parse arguments
-while getopts ":a:c:xhqQ" opt; do
+while getopts ":a:c:r:xhqQ" opt; do
   case ${opt} in
     a )
       iam=$OPTARG
@@ -35,6 +36,9 @@ while getopts ":a:c:xhqQ" opt; do
     c )
       iam=$OPTARG
       SHOW_INSTANCE_MENU=true
+      ;;
+    r )
+      REGION_PARAM="--region $OPTARG"
       ;;
     x )
       export_flag=true
@@ -410,7 +414,7 @@ display_menu() {
 
 # Menu interface handler
 instance_menu() {
-  aws ec2 describe-instances --no-cli-pager --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value | [0]]' --output text > $INSTANCE_LIST_FILE
+  aws ec2 describe-instances $REGION_PARAM --no-cli-pager --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value | [0]]' --output text > $INSTANCE_LIST_FILE
   lines=()
   while IFS= read -r line || [[ -n "$line" ]]; do
       lines+=("$line")
@@ -432,7 +436,7 @@ instance_menu() {
           tput rc
           tput cud $menu_height
           ec2_name="${lines[$selected_index]}"
-          aws ssm start-session --target $( aws ec2 describe-instances --region eu-west-1 --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
+          aws ssm start-session $REGION_PARAM --target $( aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
           break
       fi
   done
