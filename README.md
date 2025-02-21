@@ -29,9 +29,13 @@ After logging in:
   leave                 Goes back to parent role (root).
 ```
 
+### Preview
 ![qlaws](docs/qlaws3.gif)
 
-#### If you want to use it within a script, you can do something like this:
+### Notes
+
+If you want to use it within a script to login and assume different roles while staying on the main script without the need for user input, you can do something like this:
+
 ```bash
 #!/bin/bash
 qlaws -x;loadauth
@@ -45,4 +49,4 @@ assume my-second-server-role
 ansible-playbook myproject.yml -i my-second-server.host
 echo "application is installed on my second server"
 ```
-It will login and assume different roles while staying on the main script without the need for user input.
+
