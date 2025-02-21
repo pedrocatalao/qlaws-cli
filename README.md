@@ -30,7 +30,7 @@ After logging in:
 ```
 
 ### Preview
-![qlaws](docs/qlaws3.gif)
+<img src="docs/qlaws3.gif" width="650" height="450"/>
 
 ### Notes
 
