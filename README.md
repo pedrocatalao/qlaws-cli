@@ -10,9 +10,25 @@
 * Also allows to stay in the same session for use within another script that requires changing accounts or roles.
 * It looks cool, too ;)
 
-![qlaws222](https://github.com/user-attachments/assets/792207a0-db35-487b-8b6c-7388c3ff59ef)
+### Options
+```
+Usage: /Users/pedro/Git/qlaws-cli/qlaws [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]
+  -a iam                Assume iam role
+  -c iam                Show instances running and chose one to connect
+  -r region             Specify region
+  -x                    Export only (no new session)
+  -q                    Go quicker (and reset setting)
+  -Q                    Go quicker (and store setting)
+  -h                    Display help
 
-![qlaws](docs/qlaws1.gif)
+After logging in:
+  loadauth              When in export only mode, loads the credentials into your session.
+  assume [role iam]     Assumes a iam role and updates credentials so you can connects.
+  connect [hostname]    Connects to a server (assuming you're in the right account).
+  leave                 Goes back to parent role (root).
+```
+
+![qlaws](docs/qlaws3.gif)
 
 #### If you want to use it within a script, you can do something like this:
 ```bash
