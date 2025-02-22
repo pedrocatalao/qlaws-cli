@@ -41,7 +41,8 @@ while getopts ":a:c:r:xhqQ" opt; do
       SHOW_INSTANCE_MENU=true
       ;;
     r )
-      REGION_PARAM="--region $OPTARG"
+      region=$OPTARG
+      REGION_PARAM="--region $region"
       ;;
     x )
       export_flag=true
@@ -79,6 +80,7 @@ setup_files() {
   INSTANCE_LIST_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.ec2"
   PARENT_CREDS="$SCRIPT_DIR/.$SCRIPT_NAME.root"
   ENVIRONMENT_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.env"
+  LOG_FILE="$SCRIPT_DIR/.$SCRIPT_NAME.log"
   KEYCHAIN_P="$SCRIPT_DIR/.secret.keychain"
   TOKEN_2FA="$SCRIPT_DIR/.secret.token"
 
@@ -242,6 +244,32 @@ export_to_env() {
   echo "export $1" >> $ENVIRONMENT_FILE
 }
 
+# Set ssm to start with bash
+add_bash_to_session_manager() {
+  current_shell=$(aws ssm get-document $REGION_PARAM --no-cli-pager --name "SSM-SessionManagerRunShell" --query "Content" --output text | jq -r '.inputs.shellProfile.linux')
+  if [[ "$current_shell" != "/bin/bash" ]]; then
+    print_box_mid;printf "${bul}Updating linux shell"
+    start_spinner
+    aws ssm update-document \
+        $REGION_PARAM --no-cli-pager \
+        --name "SSM-SessionManagerRunShell" \
+        --document-version "\$LATEST" \
+        --document-format "JSON" \
+        --no-cli-pager \
+        --content '{
+            "schemaVersion": "1.0",
+            "description": "Document to hold regional settings for Session Manager",
+            "sessionType": "Standard_Stream",
+            "inputs": {
+                "shellProfile": {
+                    "linux": "/bin/bash"
+                }
+            }
+        }' >/dev/null 2>&1
+    stop_spinner "ok"
+  fi
+}
+
 # Colors
 lcl="\033[38;2;85;172;243m" # Blue
 gcl="\033[1;32m" # Green
@@ -251,18 +279,18 @@ wcl="\033[35;96m" # White
 ncl="\033[0m" # No color
 
 # Gfx side lines and stuff
-sls="${lcl}┏╾┈" # Side line start
-slm="${lcl}┃ " # Side line mid
-sle="${lcl}┗╾┈${ncl} " # Side line end
-rsls="${lcl}┈╼┓"
-rsle="${lcl}┈╼┛"
+sls="${ncl}┏╾ " # Side line start
+slm="${ncl}┃ " # Side line mid
+sle="${ncl}┗╾ ${ncl} " # Side line end
+rsls="${ncl} ╼┓"
+rsle="${ncl} ╼┛"
 spinner=( ∙∙∙ ●∙∙ ∙●∙ ∙∙● )
 spc="${gcl}${spinner[0]}" # Spinner characters
 rws="\033[${#spinner[0]}D" # Rewind spinner characters
 rwc="\033[1D" # Rewind cursor 1 character
 mcu="\033[1A"
 bul="${lcl}▬${ncl} " # Bullet
-chk="❤" # Checkmark
+chk="✔" # Checkmark
 
 # Print colored symbol and play a sound
 print_symbol() {
@@ -307,7 +335,7 @@ spinner_process() {
 }
 
 # Cursor
-show_cursor() { printf "\e[?25h"; }
+show_cursor() { printf "\e[?25h${ncl}"; }
 hide_cursor() { printf "\e[?25l"; }
 
 # Spinner clean up
@@ -403,19 +431,22 @@ print_logo() {
 # Print string with padding
 print_with_pad() {
     local str="$1"
-    printf "%-37s" "$str"
+    printf "%-33s" "$str"
 }
 
 # Instance menu
 display_menu() {
+  hide_cursor
   tput rc
   for i in "${!lines[@]}"; do
+    print_box_mid
     if [ "$i" -eq "$selected_index" ]; then
-      printf "\e[100;90m    ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)\n"
+      printf "\e[100;90m    ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${lines[$i]}")$(tput sgr0)"
     else
-      printf "    ${gcl}▪${ncl} $(print_with_pad "${lines[$i]}")\n"
+      printf "    ${gcl}▪${ncl} $(print_with_pad "${lines[$i]}")"
     fi
   done
+  print_box_end
   tput rc
   tput cud $selected_index;
   [ "0" -eq "$selected_index" ] && tput cuu 1
@@ -423,6 +454,7 @@ display_menu() {
 
 # Menu interface handler
 instance_menu() {
+  print_box_mid
   aws ec2 describe-instances $REGION_PARAM --no-cli-pager --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value | [0]]' --output text > $INSTANCE_LIST_FILE
   lines=()
   while IFS= read -r line || [[ -n "$line" ]]; do
@@ -431,13 +463,14 @@ instance_menu() {
   selected_index=0
   menu_height=${#lines[@]}
   if [ $menu_height -eq 0 ]; then
-    printf "  ${rcl}➜ ${ncl}No instances available.\n\n"
+    printf "  ${rcl}➜ ${ncl}No instances in: $region"
+    finish "error"
     exit;
   else
-    printf "  ${rcl}➜ ${ncl}Start SSM session on:\n"
+    printf "  ${rcl}➜ ${ncl}Start SSM session on:"
   fi
-  for i in "${!lines[@]}"; do echo; done
-  tput cuu $menu_height; tput sc
+  for (( i=0; i<$((menu_height+2)); i++ )); do echo;done
+  tput cuu $((menu_height + 2)); tput sc
   while true; do
     display_menu
     read -rsn1 input
@@ -448,10 +481,12 @@ instance_menu() {
       fi
     elif [[ "$input" == "" ]]; then
       tput rc
-      tput cud $menu_height
+      tput cud $((menu_height + 2))
       ec2_name="${lines[$selected_index]}"
       show_cursor
-      aws ssm start-session $REGION_PARAM --target $( aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
+      instance_id=$(aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
+      aws ssm send-command $REGION_PARAM --no-cli-pager --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=$instance_id" --parameters 'commands=["sudo usermod -s /bin/bash ssm-user", "grep -qxF \"cd /home/ssm-user\" /home/ssm-user/.bashrc || echo \"cd /home/ssm-user\" >> /home/ssm-user/.bashrc"]' > /dev/null 2>&1 
+      aws ssm start-session $REGION_PARAM --target $instance_id 
       break
     fi
   done
@@ -461,7 +496,9 @@ instance_menu() {
 print_outro() {
   print_box_mid
   printf "${bul}"
-  fake_deshuffle "Quick Login · Amazon Web Services " "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.0005; print_symbol "$chk" "$gcl"
+  fake_deshuffle "Quick Login" "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.0005; 
+  printf "${gcl} ➜ ${ncl}"
+  fake_deshuffle "Amazon Web Services" "абвгдеёжзийклмнопрстуфхцчшщъыьэюя" 0.0005; 
 }
 
 # Finish action
@@ -504,14 +541,14 @@ prepare_credentials() {
   print_box_mid;printf "${bul}Generating 2FA token "
   printf "${spc}"
   spinner_process 2
-  printf "${rws}▸ "
+  printf "${rws}➜ "
   token="$(totp ${secret})"
   fake_deshuffle "$token" "1234567890" 0.02
 }
 
 # Unlock aws-vault keychain
 unlock_keychain() {
-  security -q -v unlock-keychain -p "$keychain_pwd" $AWS_KEYCHAIN > /dev/null 2>&1  
+  security -q -v unlock-keychain -p "$keychain_pwd" $AWS_KEYCHAIN > /dev/null 2>&1
 }
 
 # Check if already in aws vault session
@@ -526,7 +563,7 @@ check_existing_aws_session() {
 # Execute login to aws
 login_to_aws() {
   print_box_mid;printf "${bul}"
-  shuffle_and_scroll "Logging in to $iam" 34 "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+  shuffle_and_scroll "Selected profile $iam" 34 "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
   start_spinner
   aws-vault clear "$PERSONAL_IAM_PROFILE" > /dev/null 2>&1
   aws_env=$(aws-vault exec "$PERSONAL_IAM_PROFILE" -t "$token" 2>/dev/null -- env) >/dev/null 2>&1
@@ -547,12 +584,12 @@ login_to_aws() {
     print_symbol "✗" "${rcl}"
     finish "error"
   elif [[ "$export_flag" == false ]]; then
-    print_box_mid;printf "\r${slm}${bul}New AWS session started $spc$gcl"
+    print_box_mid;printf "\r${slm}${bul}Login successful $spc$gcl"
     spinner_process 2
     stop_spinner $aws_env
     if [[ "$SHOW_INSTANCE_MENU" == true ]];then
-      finish "success"
-      printf $ncl
+      afplay "$SCRIPT_DIR/sounds/success.mp3" &
+      add_bash_to_session_manager
       instance_menu
     else
       show_commands
@@ -579,7 +616,7 @@ add_config_to_shell_profile
 
 check_existing_aws_session
 
-print_logo "$wcl" "" "" "$rcl" # Colors per line
+print_logo "$wcl" "$lcl" "$lcl" "$rcl" # Colors per line
 
 print_outro
 
