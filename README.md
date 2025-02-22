@@ -18,7 +18,7 @@ Usage: qlaws [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]
   -c iam                Show instances running and chose one to connect
   -r region             Specify region
   -x                    Export only (no new session)
-  -q                    Go quicker (and reset setting)
+  -q                    Go quicker (less animations)
   -Q                    Go quicker (and store setting)
   -h                    Display help
 
