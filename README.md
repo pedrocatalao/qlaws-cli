@@ -8,8 +8,11 @@ Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 i
 ### Features
 * Unlocks the aws-vault keychain without user intervention.
 * Generates TOTP token for 2FA and uses it automatically.
-* Also allows to stay in the same session for use within another script that requires changing accounts or roles.
-* It looks cool, too ;)
+* Optionally allows to stay in the same session for use within another script that requires changing accounts or roles.
+* *NEW* Scrolling text when too big to fit.
+* *NEW* Option to show and select EC2 instances withing specified iam profile.
+* *NEW* Option to specify region.
+* *NEW* More eye candy (fading surrounding box and menu).
 
 ### Options
 ```
@@ -17,7 +20,7 @@ Usage: qlaws [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]
   -a iam                Assume iam role
   -c iam                Show instances running and chose one to connect
   -r region             Specify region
-  -x                    Export only (no new session)
+  -x                    Export only (no new shell)
   -q                    Go quicker (less animations)
   -Q                    Go quicker (and store setting)
   -h                    Display help
