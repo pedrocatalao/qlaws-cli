@@ -35,7 +35,6 @@ After logging in:
 ```
 
 ### Preview
-<img src="docs/qlaws5.gif" width="650" height="480"/>
 
 ![preview](docs/qlaws5.gif)
 
