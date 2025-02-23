@@ -9,10 +9,10 @@ Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 i
 * Unlocks the aws-vault keychain without user intervention.
 * Generates TOTP token for 2FA and uses it automatically.
 * Optionally allows to stay in the same session for use within another script that requires changing accounts or roles.
-* *NEW* Scrolling text when too big to fit.
-* *NEW* Option to show and select EC2 instances withing specified iam profile.
-* *NEW* Option to specify region.
-* *NEW* More eye candy (fading surrounding box and menu).
+* ***[NEW]*** Scrolling text when too big to fit.
+* ***[NEW]*** Option to show and select EC2 instances withing specified iam profile.
+* ***[NEW]*** Option to specify region.
+* ***[NEW]*** More eye candy (fading surrounding box and menu).
 
 ### Options
 ```
