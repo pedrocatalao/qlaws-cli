@@ -9,12 +9,12 @@ Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 i
 * Unlocks the aws-vault keychain without user intervention.
 * Generates TOTP token for 2FA and uses it automatically.
 * Optionally allows to stay in the same session for use within another script that requires changing accounts or roles.
-* ***[NEW]*** Option to make the animations run quicker when you're too busy to watch the eye candy stuff.
-* ***[NEW]*** Scrolling text when too big to fit.
-* ***[NEW]*** Option to show and select EC2 instances withing specified iam profile.
-* ***[NEW]*** Option to specify region.
-* ***[NEW]*** Pushes new `SSM-SessionManagerRunShell` document version that specifies SSM starting with `bash`.
-* ***[NEW]*** More eye candy (fading surrounding box and menu).
+* ![New](https://img.shields.io/badge/NEW-red?style=flat-square) Option to make the animations run quicker when you're too busy to watch the eye candy stuff.
+* ![New](https://img.shields.io/badge/NEW-red?style=flat-square) Scrolling text when too big to fit.
+* ![New](https://img.shields.io/badge/NEW-red?style=flat-square) Option to show and select EC2 instances withing specified iam profile.
+* ![New](https://img.shields.io/badge/NEW-red?style=flat-square) Option to specify region.
+* ![New](https://img.shields.io/badge/NEW-red?style=flat-square) Pushes new `SSM-SessionManagerRunShell` document version that specifies SSM starting with `bash`.
+* ![New](https://img.shields.io/badge/NEW-red?style=flat-square) More eye candy (fading surrounding box and menu).
 
 ### Options
 ```
