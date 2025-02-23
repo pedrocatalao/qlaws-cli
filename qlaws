@@ -231,6 +231,13 @@ run_config() {
   fi
 }
 
+# Verify if iam profile exists
+check_aws_profile() {
+  if ! grep -q "\[profile $iam\]" ~/.aws/config && [[ "$iam" != "root-iam" ]]; then
+    echo "Profile '$iam' does not exist."; exit 1;
+  fi
+}
+
 # Source the config file in the user's shell profile (if it's not there yet)
 add_config_to_shell_profile() {
   line="source $CONFIG_FILE > /dev/null 2>&1"
@@ -659,6 +666,8 @@ run_config
 add_config_to_shell_profile
 
 check_existing_aws_session
+
+check_aws_profile
 
 print_logo "$wcl" "$lcl" "$lcl" "$rcl" # Colors per line
 
