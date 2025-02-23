@@ -431,7 +431,7 @@ print_logo() {
 # Print string with padding
 print_with_pad() {
     local str="$1"
-    printf "%-33s" "$str"
+    printf "%-34s" "$str"
 }
 
 # Instance menu
@@ -440,9 +440,9 @@ display_menu() {
   for i in "${!shortened_lines[@]}"; do
     print_box_mid
     if [ "$i" -eq "$selected_index" ]; then
-      printf "\e[100;90m    ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${shortened_lines[$i]}")$(tput sgr0)"
+      printf "\e[100;90m   ${gcl}▪${ncl}\e[100;97m $(tput setaf 15)$(print_with_pad "${shortened_lines[$i]}")$(tput sgr0)"
     else
-      printf "    ${gcl}▪${ncl} $(print_with_pad "${shortened_lines[$i]}")"
+      printf "   ${gcl}▪${ncl} $(print_with_pad "${shortened_lines[$i]}")"
     fi
   done
   print_box_end
@@ -456,8 +456,8 @@ animate_menu() {
   tput rc
   for i in "${!lines[@]}"; do
     print_box_mid
-    printf "    ${gcl}▪${ncl} "
-    shuffle_and_scroll "${lines[$i]}" 33 "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+    printf "   ${gcl}▪${ncl} "
+    shuffle_and_scroll "${lines[$i]}" 34 "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
   done
   print_box_end
   tput rc
@@ -478,7 +478,7 @@ instance_menu() {
     lines+=("$line")
   done < $INSTANCE_LIST_FILE
   for i in "${!lines[@]}"; do
-      shortened_lines[i]=$(echo "${lines[i]}" | awk '{gsub(/^ +| +$/, "")} {print substr($0, length($0)-32)}')
+      shortened_lines[i]=$(echo "${lines[i]}" | awk '{gsub(/^ +| +$/, "")} {print substr($0, length($0)-33)}')
   done
   selected_index=0
   menu_height=${#lines[@]}
@@ -487,7 +487,7 @@ instance_menu() {
     finish "error"
     exit;
   else
-    printf "  ${rcl}➜ ${ncl}Start SSM session on:        (Q)uit"
+    printf "  ${rcl}➜ ${ncl}Start SSM session on:        [Q]uit"
   fi
   for (( i=0; i<$((menu_height+2)); i++ )); do echo; done
   tput cuu $((menu_height + 2)); tput sc
