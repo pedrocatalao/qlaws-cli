@@ -1,4 +1,5 @@
-# qlaws-cli
+# qlaws-cli ![GitHub Repo stars](https://img.shields.io/github/stars/pedrocatalao/qlaws-cli)
+
 Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 instances.
 
 ### Dependencies
