@@ -36,7 +36,8 @@ After logging in:
 
 ### Preview
 <img src="docs/qlaws5.gif" width="650" height="480"/>
-(docs/qlaws5.gif)
+![preview](docs/qlaws5.gif)
+
 ### Notes
 
 If you want to use it within a script to login and assume different roles while staying on the main script without the need for user input, you can do something like this:
