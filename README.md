@@ -12,6 +12,7 @@ Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 i
 * ***[NEW]*** Scrolling text when too big to fit.
 * ***[NEW]*** Option to show and select EC2 instances withing specified iam profile.
 * ***[NEW]*** Option to specify region.
+* ***[NEW]*** Pushes new `SSM-SessionManagerRunShell` document version that specifies SSM starting with `bash`.
 * ***[NEW]*** More eye candy (fading surrounding box and menu).
 
 ### Options
