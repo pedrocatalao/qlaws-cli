@@ -397,10 +397,10 @@ fake_deshuffle() {
 
 # Fade box color
 fade_color() {
-    local factor=9 r g b
-    r=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\1/');r=$((r - $factor < 0 ? 0 : r - 0))
-    g=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\2/');g=$((g - $factor < 0 ? 0 : g - 7))
-    b=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\3/');b=$((b - $factor < 0 ? 0 : b - 10))
+    local r g b
+    r=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\1/');r=$((r + 5 > 255 ? 255 : r + 5))
+    g=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\2/');g=$((g + 3 > 255 ? 255 : g + 3))
+    b=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\3/');b=$((b + 2 > 255 ? 255 : b + 2))
     lcl="\033[38;2;${r};${g};${b}m"
 }
 
@@ -461,7 +461,7 @@ update_menu() {
     print_box_mid "${line_colors[$i]}"
     if [ "$i" -eq "$selected_index" ]; then
       menu_color="\033[48;${line_colors[i]#*;}"
-      printf "${menu_color}   ${gcl}▪${wcl} $(tput setaf 15)$(print_with_pad "${shortened_lines[$i]}")$(tput sgr0)"
+      printf "${menu_color}   \033[30m▪ $(print_with_pad "${shortened_lines[$i]}")$(tput sgr0)"
     else
       printf "   ${gcl}▪${ncl} $(print_with_pad "${shortened_lines[$i]}")"
     fi
