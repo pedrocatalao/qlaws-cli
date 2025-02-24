@@ -398,9 +398,9 @@ fake_deshuffle() {
 # Fade box color
 fade_color() {
     local factor=9 r g b
-    r=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\1/');r=$((r - $factor < 0 ? 0 : r - $factor))
-    g=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\2/');g=$((g - $factor < 0 ? 0 : g - $factor))
-    b=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\3/');b=$((b - $factor < 0 ? 0 : b - $factor))
+    r=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\1/');r=$((r - $factor < 0 ? 0 : r - 0))
+    g=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\2/');g=$((g - $factor < 0 ? 0 : g - 7))
+    b=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\3/');b=$((b - $factor < 0 ? 0 : b - 10))
     lcl="\033[38;2;${r};${g};${b}m"
 }
 
