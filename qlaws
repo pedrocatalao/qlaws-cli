@@ -397,28 +397,27 @@ fake_deshuffle() {
 
 # Fade box color
 fade_color() {
-    local base_color="$1" factor=5 fg_or_bg r g b
-    bg_or_fg=$(echo "$1" | cut -d ';' -f 1)
-    r=$(echo -n "$1" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\1/');r=$((r - $factor < 0 ? 0 : r - $factor))
-    g=$(echo -n "$1" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\2/');g=$((g - $factor < 0 ? 0 : g - $factor))
-    b=$(echo -n "$1" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\3/');b=$((b - $factor < 0 ? 0 : b - $factor))
-    echo -e "${bg_or_fg};2;${r};${g};${b}m"
+    local factor=9 r g b
+    r=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\1/');r=$((r - $factor < 0 ? 0 : r - $factor))
+    g=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\2/');g=$((g - $factor < 0 ? 0 : g - $factor))
+    b=$(echo -n "$lcl" | sed -E 's/.*2;([0-9]+);([0-9]+);([0-9]+)m.*/\3/');b=$((b - $factor < 0 ? 0 : b - $factor))
+    lcl="\033[38;2;${r};${g};${b}m"
 }
 
 # Print box
 print_box_start() {
-  [[ -z "$1" ]] && lcl=$(fade_color $lcl) || lcl="$1"
+  [[ -z "$1" ]] && fade_color || lcl="$1"
   printf "${lcl}${sls}%37s${rsls}"
 }
 
 print_box_mid() {
-  [[ -z "$1" ]] && lcl=$(fade_color $lcl) || lcl="$1"
+  [[ -z "$1" ]] && fade_color || lcl="$1"
   printf "\n${lcl}${slm}%40s${slm}"
   printf "%.0s${rwc}" {1..42}
 }
 
 print_box_end() {
-  [[ -z "$1" ]] && lcl=$(fade_color $lcl) || lcl="$1"
+  [[ -z "$1" ]] && fade_color || lcl="$1"
   printf "\n${lcl}${sle}%37s${rsle}\n"
 }
 
@@ -458,11 +457,10 @@ print_with_pad() {
 # Instance menu
 update_menu() {
   tput rc
-  menu_color="\033[48;${line_colors[0]#*;}"
   for i in "${!shortened_lines[@]}"; do
-    menu_color=$(fade_color $menu_color)
     print_box_mid "${line_colors[$i]}"
     if [ "$i" -eq "$selected_index" ]; then
+      menu_color="\033[48;${line_colors[i]#*;}"
       printf "${menu_color}   ${gcl}▪${wcl} $(tput setaf 15)$(print_with_pad "${shortened_lines[$i]}")$(tput sgr0)"
     else
       printf "   ${gcl}▪${ncl} $(print_with_pad "${shortened_lines[$i]}")"
@@ -534,7 +532,7 @@ start_instance_menu() {
       show_cursor
       instance_id=$(aws ec2 describe-instances $REGION_PARAM --filters "Name=tag:Name,Values='$ec2_name'" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[*].InstanceId" --output=text)
       aws ssm send-command $REGION_PARAM --no-cli-pager --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=$instance_id" --parameters 'commands=["sudo usermod -s /bin/bash ssm-user", "grep -qxF \"cd /home/ssm-user\" /home/ssm-user/.bashrc || echo \"cd /home/ssm-user\" >> /home/ssm-user/.bashrc"]' > /dev/null 2>&1 
-      aws ssm start-session $REGION_PARAM --target $instance_id 
+      aws ssm start-session $REGION_PARAM --target $instance_id
       break
     elif [[ "$(echo "$input" | tr '[:upper:]' '[:lower:]')" == "q" ]]; then
       exit_menu
