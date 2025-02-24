@@ -449,9 +449,8 @@ print_logo() {
 }
 
 # Print string with padding
-print_with_pad() {
-    local str="$1"
-    printf "%-34s" "$str"
+print_menu_selection() {
+    printf "%-34s" "$1"
 }
 
 # Instance menu
@@ -461,9 +460,9 @@ update_menu() {
     print_box_mid "${line_colors[$i]}"
     if [ "$i" -eq "$selected_index" ]; then
       menu_color="\033[48;${line_colors[i]#*;}"
-      printf "${menu_color}   \033[30m▪ $(print_with_pad "${shortened_lines[$i]}")$(tput sgr0)"
+      printf "${menu_color}   \033[30m▪ $(print_menu_selection "${shortened_lines[$i]}")$(tput sgr0)"
     else
-      printf "   ${gcl}▪${ncl} $(print_with_pad "${shortened_lines[$i]}")"
+      printf "   ${gcl}▪${ncl} ${shortened_lines[$i]}"
     fi
   done
   print_box_end "${line_colors[${#line_colors[@]}-1]}"
@@ -638,7 +637,7 @@ login_to_aws() {
     if [[ "$SHOW_INSTANCE_MENU" == true ]];then
       afplay "$SCRIPT_DIR/sounds/success.mp3" &
       add_bash_to_session_manager
-      printf "           [${rcl}Q${ncl}]uit"
+      printf "\033[36G[${rcl}Q${ncl}]uit"
       start_instance_menu
     else
       show_commands
