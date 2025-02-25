@@ -21,7 +21,7 @@ Bash script to facilitate logging in, assuming AWS roles and connecting to EC2 i
 ```
 Usage: qlaws [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]
   -a iam                Assume iam role
-  -l iam                Show instances running and chose one to connect
+  -l iam                List instances on this iam and choose one to connect
   -r region             Specify region
   -x                    Export only (no new shell)
   -q                    Go quicker (less animations)
