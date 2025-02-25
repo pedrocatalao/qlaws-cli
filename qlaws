@@ -14,9 +14,9 @@ trap "clean_up" INT
 
 # Function to display help
 show_help() {
-  echo "Usage: $0 [-a iam | -c iam] [-r region] [-x] [-h] [-q | -Q]"
+  echo "Usage: $0 [-a iam | -l iam] [-r region] [-x] [-h] [-q | -Q]"
   echo "  -a iam                Assume iam role"
-  echo "  -c iam                Show instances running and chose one to connect"
+  echo "  -l iam                List instances on this iam and choose one to connect"
   echo "  -r region             Specify region"
   echo "  -x                    Export only (no new session)"
   echo "  -q                    Go quicker (and reset setting)"
@@ -36,7 +36,7 @@ while getopts ":a:c:r:xhqQ" opt; do
     a )
       iam=$OPTARG
       ;;
-    c )
+    l )
       iam=$OPTARG
       SHOW_INSTANCE_MENU=true
       ;;
