@@ -31,7 +31,7 @@ show_help() {
 }
 
 # Parse arguments
-while getopts ":a:c:r:xhqQ" opt; do
+while getopts ":a:l:r:xhqQ" opt; do
   case ${opt} in
     a )
       iam=$OPTARG
@@ -298,6 +298,9 @@ rwc="\033[1D" # Rewind cursor 1 character
 mcu="\033[1A"
 bul="${lcl}▬${ncl} " # Bullet
 chk="✔" # Checkmark
+
+# Animation speed
+SPINNER=0.05
 
 # Print colored symbol and play a sound
 print_symbol() {
