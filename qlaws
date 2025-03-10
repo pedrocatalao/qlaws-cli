@@ -18,7 +18,7 @@ show_help() {
   echo "  -a iam                Assume iam role"
   echo "  -l iam                List instances on this iam and choose one to connect"
   echo "  -r region             Specify region"
-  echo "  -x                    Export only (no new session)"
+  echo "  -x                    Export only (stays in current terminal session)"
   echo "  -q                    Go quicker (and reset setting)"
   echo "  -Q                    Go quicker (and store setting)"
   echo "  -h                    Display help"
@@ -27,7 +27,7 @@ show_help() {
   echo "  loadauth              When in export only mode, loads the credentials into your session."
   echo "  assume [role iam]     Assumes a iam role and updates credentials so you can connects."
   echo "  connect [hostname]    Connects to a server (assuming you're in the right account)."
-  echo "  leave                 Goes back to parent role (root)."
+  echo "  leave                 Goes back to parent role (default-iam-profile)."
 }
 
 # Parse arguments
